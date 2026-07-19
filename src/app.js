@@ -6,11 +6,14 @@ import {
   dailyTasksFor,
   exportCsv,
   exportJson,
+  isSignedIn,
   loadState,
   programForState,
   readinessAdvice,
   resetState,
   saveState,
+  signIn,
+  signOut,
   stats,
   substituteExercise,
   taskKey,
@@ -60,6 +63,7 @@ function render() {
 }
 
 function view() {
+  if (!isSignedIn(state)) return loginView();
   if (route === "tasks") return tasksView();
   if (route === "calendar") return calendarView();
   if (route === "program") return programView();
@@ -67,6 +71,23 @@ function view() {
   if (route === "library") return libraryView();
   if (route === "settings") return settingsView();
   return dashboardView();
+}
+
+function loginView() {
+  return `
+    <section class="login-shell">
+      <form class="login-card" id="login-form">
+        <p class="eyebrow">Athlete 365</p>
+        <h2>Enter your athlete name</h2>
+        <p>This app uses a simple local profile. No ChatGPT sign-in is needed for the app itself.</p>
+        <label class="field">
+          Username
+          <input name="username" value="Anton" autocomplete="name" required minlength="2" />
+        </label>
+        <button class="primary" type="submit">Start training</button>
+      </form>
+    </section>
+  `;
 }
 
 function tasksView() {
@@ -83,7 +104,7 @@ function tasksView() {
         <div class="panel-head">
           <div>
             <p class="eyebrow">Quick task queue</p>
-            <h2>Small tasks that keep replacing themselves</h2>
+            <h2>${state.profile.name}'s quick tasks</h2>
             <p>Most tasks need no equipment. Higher tiers unlock as your total level rises.</p>
           </div>
           <strong class="level-badge">${s.microTasksDone} done</strong>
@@ -395,6 +416,7 @@ function settingsView() {
         </div>
         <label class="field wide">Limitations<textarea name="limitations" rows="3">${state.profile.limitations || ""}</textarea></label>
         <div class="actions"><button class="primary" type="submit">Save settings</button><button type="button" data-reset>Reset local data</button></div>
+        <div class="actions secondary-actions"><button type="button" data-sign-out>Sign out username</button></div>
       </form>
       <article class="card span">
         <h3>Safety</h3>
@@ -433,6 +455,13 @@ function metricCards(s) {
 }
 
 function bindEvents() {
+  app.querySelector("#login-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    state = signIn(state, form.get("username"));
+    saveState(state);
+    render();
+  });
   app.querySelectorAll("[data-route]").forEach((button) => button.addEventListener("click", () => {
     route = button.dataset.route;
     render();
@@ -495,6 +524,12 @@ function bindEvents() {
       route = "tasks";
       render();
     }
+  });
+  app.querySelector("[data-sign-out]")?.addEventListener("click", () => {
+    state = signOut(state);
+    saveState(state);
+    route = "tasks";
+    render();
   });
   app.querySelectorAll("[data-export]").forEach((button) => button.addEventListener("click", () => {
     const type = button.dataset.export;

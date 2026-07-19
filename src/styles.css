@@ -97,6 +97,27 @@ nav {
   padding: 0 clamp(1rem, 3vw, 2.5rem) 2.5rem;
 }
 
+.login-shell {
+  min-height: 68vh;
+  display: grid;
+  place-items: center;
+}
+
+.login-card {
+  width: min(100%, 440px);
+  display: grid;
+  gap: 1rem;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: clamp(1.2rem, 4vw, 2rem);
+}
+
+.login-card h2 {
+  margin-bottom: 0;
+}
+
 .hero-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -396,6 +417,10 @@ dd {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
+}
+
+.secondary-actions {
+  margin-top: 0.7rem;
 }
 
 .set {

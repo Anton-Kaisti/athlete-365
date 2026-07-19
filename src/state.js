@@ -6,7 +6,7 @@ export function initialState() {
   const startDate = todayIso();
   return {
     profile: {
-      name: "Athlete",
+      name: "",
       level: "Intermediate",
       startDate,
       equipment: ["pull-up bar", "rings", "resistance bands", "jump rope", "chair", "stairs"],
@@ -26,6 +26,22 @@ export function initialState() {
     records: [],
     achievements: []
   };
+}
+
+export function isSignedIn(state) {
+  return Boolean(state.profile.name?.trim());
+}
+
+export function signIn(state, username) {
+  const next = structuredClone(state);
+  next.profile.name = username.trim();
+  return ensureMicroTasks(next);
+}
+
+export function signOut(state) {
+  const next = structuredClone(state);
+  next.profile.name = "";
+  return next;
 }
 
 export function loadState() {

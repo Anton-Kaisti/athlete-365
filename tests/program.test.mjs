@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, stats, taskKey, taskProgress } from "../src/state.js";
+import { completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, signIn, signOut, stats, taskKey, taskProgress } from "../src/state.js";
 
 const program = generateProgram("2026-07-19");
 const errors = validateProgram(program);
@@ -24,6 +24,13 @@ assert.ok(tasks.some((task) => task.id === "full-workout"));
 assert.ok(tasks.find((task) => task.id === "full-workout").xp > tasks.find((task) => task.id === "warmup").xp);
 
 let state = initialState();
+assert.equal(isSignedIn(state), false);
+state = signIn(state, "Anton");
+assert.equal(isSignedIn(state), true);
+assert.equal(state.profile.name, "Anton");
+state = signOut(state);
+assert.equal(isSignedIn(state), false);
+state = signIn(state, "Anton");
 state = ensureMicroTasks(state);
 assert.equal(state.microTasks.length, 8);
 assert.ok(state.microTasks.every((task) => task.tier === 1));
