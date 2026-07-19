@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import { generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
+import { completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, stats, taskKey, taskProgress } from "../src/state.js";
+
+const program = generateProgram("2026-07-19");
+const errors = validateProgram(program);
+
+assert.equal(program.length, 365);
+assert.deepEqual(errors, []);
+assert.equal(program[0].block, 1);
+assert.equal(program[27].weekInBlock, 4);
+assert.equal(program[84].phase, "Strength");
+assert.equal(program[168].phase, "Athletic performance");
+assert.equal(program[252].phase, "Mastery and longevity");
+assert.equal(program[364].dayNumber, 365);
+assert.ok(levelFromXp(0) === 1);
+assert.ok(levelFromXp(2500) > 1);
+assert.ok(xpForExercise(program[0].exercises[0], { difficulty: 2, pain: 0, formGood: true }) > 0);
+assert.ok(xpForExercise(program[0].exercises[0], { difficulty: 3, pain: 6, formGood: true }) < xpForExercise(program[0].exercises[0], { difficulty: 3, pain: 0, formGood: true }));
+
+const tasks = dailyTasksFor(program[0]);
+assert.equal(tasks.length, 10);
+assert.ok(tasks.some((task) => task.id === "full-workout"));
+assert.ok(tasks.find((task) => task.id === "full-workout").xp > tasks.find((task) => task.id === "warmup").xp);
+
+let state = initialState();
+state = ensureMicroTasks(state);
+assert.equal(state.microTasks.length, 8);
+assert.ok(state.microTasks.every((task) => task.tier === 1));
+assert.ok(state.microTasks.filter((task) => task.equipment.length === 0).length >= 6);
+const firstQuickTask = state.microTasks[0].id;
+state = completeMicroTask(state, 0);
+assert.equal(state.microTaskHistory.length, 1);
+assert.notEqual(state.microTasks[0].id, firstQuickTask);
+assert.ok(stats(state, program).microTasksDone >= 1);
+
+state = completeTask(state, program[0], "warmup");
+assert.ok(state.taskCompletions[taskKey(1, "warmup")]);
+assert.ok(stats(state, program).completedTaskCount >= 1);
+
+for (const day of program.slice(0, 3)) {
+  for (const task of dailyTasksFor(day)) {
+    state = completeTask(state, day, task.id);
+  }
+}
+assert.equal(taskProgress(state, program[2]).completed, 10);
+assert.equal(stats(state, program).taskStreak, 3);
+assert.ok(state.streakBonuses["tasks-3"]);
+
+console.log("Athlete 365 program tests passed.");

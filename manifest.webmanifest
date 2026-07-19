@@ -1,0 +1,9 @@
+{
+  "name": "Athlete 365",
+  "short_name": "Athlete365",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#14b8a6",
+  "icons": []
+}
