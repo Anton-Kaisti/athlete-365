@@ -249,6 +249,14 @@ export function dailyTasksFor(day) {
   return tasks.slice(0, 10);
 }
 
+export function timerSecondsForTask(task) {
+  const text = `${task?.title || ""} ${task?.detail || ""}`;
+  const seconds = text.match(/(\d+)(?:\s*-\s*\d+)?\s*-?\s*(?:seconds?|secs?|s)\b/i);
+  if (seconds) return Number(seconds[1]);
+  const minutes = text.match(/(\d+)(?:\s*-\s*\d+)?\s*-?\s*(?:minutes?|mins?|min)\b/i);
+  return minutes ? Number(minutes[1]) * 60 : null;
+}
+
 export function completeTask(state, day, taskId) {
   const next = structuredClone(state);
   const key = taskKey(day.dayNumber, taskId);

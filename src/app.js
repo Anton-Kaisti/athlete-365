@@ -18,6 +18,7 @@ import {
   substituteExercise,
   taskKey,
   taskProgress,
+  timerSecondsForTask,
   toggleSet,
   undoLastAction
 } from "./state.js";
@@ -26,6 +27,8 @@ let state = loadState();
 let program = programForState(state);
 let route = "tasks";
 let selectedDay = currentProgramDay();
+const taskTimers = new Map();
+let timerTicker = null;
 
 const app = document.querySelector("#app");
 const celebrationLayer = document.createElement("div");
@@ -41,7 +44,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260720-8", { updateViaCache: "none" })
+    .register("./sw.js?v=20260720-10", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -174,7 +177,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260720-8</p>
+            <p>Build 20260720-10</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -184,6 +187,7 @@ function tasksView() {
 }
 
 function microTaskCard(task, index) {
+  const timerKey = `micro:${task.id}`;
   return `
     <article class="task-card micro tier-${task.tier} task-card-informative" data-task-info="micro:${index}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
       <button type="button" class="task-check" data-micro-task="${index}" aria-label="Complete ${task.title}">+</button>
@@ -193,7 +197,7 @@ function microTaskCard(task, index) {
         <p>${task.detail}</p>
         <small>${task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"} - Tap for instructions</small>
       </div>
-      <strong>${task.xp} XP</strong>
+      ${taskCardAside(task, timerKey)}
     </article>
   `;
 }
@@ -210,6 +214,7 @@ function undoPanel() {
 
 function taskCard(task, day) {
   const done = state.taskCompletions[taskKey(day.dayNumber, task.id)];
+  const timerKey = `planned:${day.dayNumber}:${task.id}`;
   return `
     <article class="task-card task-card-informative ${task.featured ? "featured" : ""} ${done ? "done" : ""}" data-task-info="planned:${task.id}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
       <button type="button" class="task-check ${done ? "undo-check" : ""}" data-task="${task.id}" aria-label="${done ? "Undo" : "Complete"} ${task.title}">
@@ -221,9 +226,68 @@ function taskCard(task, day) {
         <p>${task.detail}</p>
         <small>Tap for instructions</small>
       </div>
-      <strong>${task.xp} XP</strong>
+      ${taskCardAside(task, timerKey)}
     </article>
   `;
+}
+
+function taskCardAside(task, timerKey) {
+  const duration = timerSecondsForTask(task);
+  if (!duration) return `<strong>${task.xp} XP</strong>`;
+  const timer = timerSnapshot(timerKey, duration);
+  return `
+    <div class="task-card-aside">
+      <strong>${task.xp} XP</strong>
+      <div class="task-timer" aria-label="Timer for ${task.title}">
+        <output data-timer-display="${timerKey}">${formatTimer(timer.remaining)}</output>
+        <div>
+          <button type="button" class="timer-toggle" data-timer-toggle="${timerKey}" data-timer-duration="${duration}">${timer.running ? "Pause" : timer.remaining < duration ? "Resume" : "Start"}</button>
+          <button type="button" class="timer-reset" data-timer-reset="${timerKey}" data-timer-duration="${duration}" aria-label="Reset timer">Reset</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function timerSnapshot(key, duration) {
+  const timer = taskTimers.get(key) || { duration, remaining: duration, running: false, endAt: null };
+  timer.duration = duration;
+  if (timer.running) timer.remaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
+  if (timer.remaining === 0) timer.running = false;
+  taskTimers.set(key, timer);
+  return timer;
+}
+
+function formatTimer(seconds) {
+  const safe = Math.max(0, Number(seconds) || 0);
+  return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
+}
+
+function updateTimerDisplays() {
+  taskTimers.forEach((timer, key) => {
+    if (timer.running) {
+      timer.remaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
+      if (timer.remaining === 0) {
+        timer.running = false;
+        navigator.vibrate?.([150, 80, 150]);
+      }
+    }
+    const output = app.querySelector(`[data-timer-display="${CSS.escape(key)}"]`);
+    if (output) {
+      output.textContent = timer.remaining === 0 ? "Done" : formatTimer(timer.remaining);
+      output.classList.toggle("complete", timer.remaining === 0);
+      const button = output.parentElement.querySelector("[data-timer-toggle]");
+      if (button) button.textContent = timer.running ? "Pause" : timer.remaining === 0 ? "Restart" : timer.remaining < timer.duration ? "Resume" : "Start";
+    }
+  });
+  if (![...taskTimers.values()].some((timer) => timer.running) && timerTicker) {
+    clearInterval(timerTicker);
+    timerTicker = null;
+  }
+}
+
+function ensureTimerTicker() {
+  if (!timerTicker) timerTicker = setInterval(updateTimerDisplays, 250);
 }
 
 function dashboardView() {
@@ -502,6 +566,25 @@ function bindEvents() {
     route = button.dataset.route;
     render();
   }));
+  app.querySelectorAll("[data-timer-toggle]").forEach((button) => button.addEventListener("click", () => {
+    const key = button.dataset.timerToggle;
+    const timer = timerSnapshot(key, Number(button.dataset.timerDuration));
+    if (timer.running) {
+      timer.remaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
+      timer.running = false;
+    } else {
+      if (timer.remaining === 0) timer.remaining = timer.duration;
+      timer.endAt = Date.now() + timer.remaining * 1000;
+      timer.running = true;
+      ensureTimerTicker();
+    }
+    updateTimerDisplays();
+  }));
+  app.querySelectorAll("[data-timer-reset]").forEach((button) => button.addEventListener("click", () => {
+    const key = button.dataset.timerReset;
+    taskTimers.set(key, { duration: Number(button.dataset.timerDuration), remaining: Number(button.dataset.timerDuration), running: false, endAt: null });
+    updateTimerDisplays();
+  }));
   app.querySelectorAll("[data-task-info]").forEach((card) => {
     const openGuide = (event) => {
       if (event.target.closest("button")) return;
@@ -605,7 +688,22 @@ function bindEvents() {
     const button = event.currentTarget;
     button.disabled = true;
     button.textContent = "Checking...";
-    await serviceWorkerRegistration?.update().catch(() => {});
+    if ("serviceWorker" in navigator) {
+      const registration = serviceWorkerRegistration || await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        button.textContent = "Updating...";
+        await registration.update().catch(() => {});
+        const pendingWorker = registration.installing || registration.waiting;
+        if (pendingWorker && pendingWorker.state !== "activated") {
+          await Promise.race([
+            new Promise((resolve) => pendingWorker.addEventListener("statechange", () => {
+              if (["activated", "redundant"].includes(pendingWorker.state)) resolve();
+            })),
+            new Promise((resolve) => setTimeout(resolve, 5000))
+          ]);
+        }
+      }
+    }
     const updateUrl = new URL(window.location.href);
     updateUrl.searchParams.set("update", Date.now().toString());
     window.location.replace(updateUrl.toString());
