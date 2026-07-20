@@ -158,6 +158,10 @@ function tasksView() {
           <p>The full workout remains the largest planned task. The quick queue is for small wins throughout the day.</p>
           <button data-route="dashboard">Open workout detail</button>
         </article>
+        <article class="card">
+          <h3>App version</h3>
+          <p>Build 20260720-1</p>
+        </article>
       </aside>
     </section>
   `;
