@@ -33,7 +33,7 @@ celebrationLayer.className = "celebration-layer";
 document.body.append(celebrationLayer);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=20260720-4").catch(() => {});
 }
 
 render();
@@ -160,7 +160,7 @@ function tasksView() {
         </article>
         <article class="card">
           <h3>App version</h3>
-          <p>Build 20260720-2</p>
+          <p>Build 20260720-4</p>
         </article>
       </aside>
     </section>
@@ -641,8 +641,6 @@ function celebrateTask(source, xp) {
   const toast = document.createElement("div");
   toast.className = "xp-toast";
   toast.textContent = xp ? `+${xp} XP` : "Task complete";
-  toast.style.left = `${Math.min(window.innerWidth - 120, Math.max(16, originX - 42))}px`;
-  toast.style.top = `${Math.max(16, originY - 72)}px`;
   celebrationLayer.append(toast);
 
   for (let index = 0; index < 16; index += 1) {
@@ -662,20 +660,35 @@ function celebrateTask(source, xp) {
     flash.remove();
     toast.remove();
     celebrationLayer.querySelectorAll(".burst-particle").forEach((particle) => particle.remove());
-  }, 1800);
+  }, 3300);
 }
 
 function celebrateLevelUp(level) {
-  const overlay = document.createElement("div");
+  celebrationLayer.querySelector(".level-up-overlay")?.remove();
+  const overlay = document.createElement("button");
+  overlay.type = "button";
   overlay.className = "level-up-overlay";
+  overlay.setAttribute("aria-label", `Total level ${level}. Tap to continue.`);
   overlay.innerHTML = `
     <div class="level-up-card">
       <span>Total level ${level}</span>
       <strong>LEVEL UP</strong>
       <small>New training power unlocked</small>
+      <em>Tap to continue</em>
     </div>
   `;
   celebrationLayer.append(overlay);
+
+  const dismiss = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", dismissWithKeyboard);
+  };
+  const dismissWithKeyboard = (event) => {
+    if (event.key === "Escape" || event.key === "Enter" || event.key === " ") dismiss();
+  };
+  overlay.addEventListener("click", dismiss, { once: true });
+  document.addEventListener("keydown", dismissWithKeyboard);
+  overlay.focus();
 
   const centerX = window.innerWidth / 2;
   const centerY = window.innerHeight / 2;
@@ -693,7 +706,6 @@ function celebrateLevelUp(level) {
   }
 
   window.setTimeout(() => {
-    overlay.remove();
     celebrationLayer.querySelectorAll(".level-particle").forEach((particle) => particle.remove());
-  }, 1800);
+  }, 2200);
 }
