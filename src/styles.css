@@ -584,6 +584,22 @@ summary {
   background: rgba(251, 113, 133, 0.08);
 }
 
+.app-version-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.app-version-card h3,
+.app-version-card p {
+  margin-bottom: 0;
+}
+
+.app-version-card button {
+  flex: 0 0 auto;
+}
+
 .celebration-layer {
   position: fixed;
   inset: 0;
@@ -883,5 +899,10 @@ summary {
 
   button {
     min-height: 46px;
+  }
+
+  .app-version-card {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

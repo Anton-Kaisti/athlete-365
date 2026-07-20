@@ -31,6 +31,7 @@ const app = document.querySelector("#app");
 const celebrationLayer = document.createElement("div");
 celebrationLayer.className = "celebration-layer";
 document.body.append(celebrationLayer);
+let serviceWorkerRegistration = null;
 
 if ("serviceWorker" in navigator) {
   let refreshingForUpdate = false;
@@ -40,8 +41,11 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260720-6", { updateViaCache: "none" })
-    .then((registration) => registration.update())
+    .register("./sw.js?v=20260720-7", { updateViaCache: "none" })
+    .then((registration) => {
+      serviceWorkerRegistration = registration;
+      return registration.update();
+    })
     .catch(() => {});
 }
 
@@ -167,9 +171,12 @@ function tasksView() {
           <p>The full workout remains the largest planned task. The quick queue is for small wins throughout the day.</p>
           <button data-route="dashboard">Open workout detail</button>
         </article>
-        <article class="card">
-          <h3>App version</h3>
-          <p>Build 20260720-6</p>
+        <article class="card app-version-card">
+          <div>
+            <h3>App version</h3>
+            <p>Build 20260720-7</p>
+          </div>
+          <button type="button" data-update-app>Get latest version</button>
         </article>
       </aside>
     </section>
@@ -578,6 +585,15 @@ function bindEvents() {
     saveState(state);
     route = "tasks";
     render();
+  });
+  app.querySelector("[data-update-app]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "Checking...";
+    await serviceWorkerRegistration?.update().catch(() => {});
+    const updateUrl = new URL(window.location.href);
+    updateUrl.searchParams.set("update", Date.now().toString());
+    window.location.replace(updateUrl.toString());
   });
   app.querySelectorAll("[data-export]").forEach((button) => button.addEventListener("click", () => {
     const type = button.dataset.export;
