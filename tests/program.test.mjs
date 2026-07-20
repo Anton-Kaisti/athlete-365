@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, signIn, signOut, stats, taskKey, taskProgress } from "../src/state.js";
+import { completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, signIn, signOut, stats, taskKey, taskProgress, undoLastAction } from "../src/state.js";
 
 const program = generateProgram("2026-07-19");
 const errors = validateProgram(program);
@@ -40,10 +40,16 @@ state = completeMicroTask(state, 0);
 assert.equal(state.microTaskHistory.length, 1);
 assert.notEqual(state.microTasks[0].id, firstQuickTask);
 assert.ok(stats(state, program).microTasksDone >= 1);
+state = undoLastAction(state);
+assert.equal(state.microTaskHistory.length, 0);
+assert.equal(state.microTasks[0].id, firstQuickTask);
 
 state = completeTask(state, program[0], "warmup");
 assert.ok(state.taskCompletions[taskKey(1, "warmup")]);
 assert.ok(stats(state, program).completedTaskCount >= 1);
+state = completeTask(state, program[0], "warmup");
+assert.equal(state.taskCompletions[taskKey(1, "warmup")], undefined);
+assert.equal(stats(state, program).completedTaskCount, 0);
 
 for (const day of program.slice(0, 3)) {
   for (const task of dailyTasksFor(day)) {

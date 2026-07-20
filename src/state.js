@@ -18,6 +18,7 @@ export function initialState() {
     xp: Object.fromEntries(SKILLS.map((skill) => [skill, 0])),
     microTasks: [],
     microTaskHistory: [],
+    lastUndo: null,
     taskCompletions: {},
     streakBonuses: {},
     completedSets: {},
@@ -108,14 +109,42 @@ export function completeMicroTask(state, slotIndex) {
   const next = structuredClone(ensureMicroTasks(state));
   const task = next.microTasks[slotIndex];
   if (!task) return next;
-  next.microTaskHistory.unshift({
+  const historyEntry = {
     ...task,
     completedAt: new Date().toISOString()
-  });
+  };
+  next.microTaskHistory.unshift(historyEntry);
   next.microTaskHistory = next.microTaskHistory.slice(0, 250);
   awardXp(next, task.skills, task.xp);
-  next.microTasks[slotIndex] = drawMicroTask(next, slotIndex + next.microTaskHistory.length);
+  const replacement = drawMicroTask(next, slotIndex + next.microTaskHistory.length);
+  next.microTasks[slotIndex] = replacement;
+  next.lastUndo = {
+    type: "micro",
+    slotIndex,
+    task,
+    replacement,
+    historyEntry,
+    xp: task.xp,
+    skills: task.skills,
+    label: task.title
+  };
   next.achievements = achievementsFor(next, programForState(next));
+  return next;
+}
+
+export function undoLastAction(state) {
+  const next = structuredClone(ensureMicroTasks(state));
+  const undo = next.lastUndo;
+  if (!undo) return next;
+  if (undo.type === "micro") {
+    if (next.microTasks[undo.slotIndex]?.id !== undo.replacement.id) return next;
+    next.microTasks[undo.slotIndex] = undo.task;
+    const index = next.microTaskHistory.findIndex((entry) => entry.completedAt === undo.historyEntry.completedAt && entry.id === undo.historyEntry.id);
+    if (index >= 0) next.microTaskHistory.splice(index, 1);
+    awardXp(next, undo.skills, -undo.xp);
+    next.lastUndo = null;
+    next.achievements = achievementsFor(next, programForState(next));
+  }
   return next;
 }
 
@@ -223,17 +252,28 @@ export function dailyTasksFor(day) {
 export function completeTask(state, day, taskId) {
   const next = structuredClone(state);
   const key = taskKey(day.dayNumber, taskId);
-  if (next.taskCompletions[key]) return next;
   const tasks = dailyTasksFor(day);
   const task = tasks.find((item) => item.id === taskId);
   if (!task) return next;
+  if (next.taskCompletions[key]) {
+    const completion = next.taskCompletions[key];
+    delete next.taskCompletions[key];
+    awardXp(next, completion.skills || task.skills, -(completion.xp || task.xp));
+    if (completion.createdWorkout) delete next.workouts[String(day.dayNumber)];
+    removeTaskStreakBonusForDay(next, day.dayNumber);
+    next.achievements = achievementsFor(next, programForState(next));
+    return next;
+  }
   next.taskCompletions[key] = {
     completed: true,
     date: new Date().toISOString(),
-    xp: task.xp
+    xp: task.xp,
+    skills: task.skills,
+    createdWorkout: false
   };
   awardXp(next, task.skills, task.xp);
   if (taskId === "full-workout" && !next.workouts[String(day.dayNumber)]?.completed) {
+    next.taskCompletions[key].createdWorkout = true;
     next.workouts[String(day.dayNumber)] = {
       completed: true,
       date: new Date().toISOString(),
@@ -331,7 +371,7 @@ export function taskStreak(state, program) {
 function awardXp(state, skills, xp) {
   const share = Math.round(xp / skills.length);
   skills.forEach((skill) => {
-    state.xp[skill] = (state.xp[skill] || 0) + share;
+    state.xp[skill] = Math.max(0, (state.xp[skill] || 0) + share);
   });
 }
 
@@ -372,9 +412,19 @@ function awardTaskStreakBonus(state, program, dayNumber) {
   if (!bonus || state.streakBonuses[`tasks-${streakNow}`]) return;
   state.streakBonuses[`tasks-${streakNow}`] = {
     date: new Date().toISOString(),
+    dayNumber,
     xp: bonus
   };
   awardXp(state, ["recovery", "strength"], bonus);
+}
+
+function removeTaskStreakBonusForDay(state, dayNumber) {
+  Object.entries(state.streakBonuses || {}).forEach(([key, bonus]) => {
+    if (bonus.dayNumber === dayNumber) {
+      awardXp(state, ["recovery", "strength"], -bonus.xp);
+      delete state.streakBonuses[key];
+    }
+  });
 }
 
 function streak(state, program) {

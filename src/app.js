@@ -18,7 +18,8 @@ import {
   substituteExercise,
   taskKey,
   taskProgress,
-  toggleSet
+  toggleSet,
+  undoLastAction
 } from "./state.js";
 
 let state = loadState();
@@ -112,6 +113,7 @@ function tasksView() {
         <div class="micro-task-list">
           ${state.microTasks.map((task, index) => microTaskCard(task, index)).join("")}
         </div>
+        ${undoPanel()}
         <div class="planned-head">
           <div>
             <p class="eyebrow">Day ${day.dayNumber} planned workout</p>
@@ -173,12 +175,22 @@ function microTaskCard(task, index) {
   `;
 }
 
+function undoPanel() {
+  if (!state.lastUndo) return "";
+  return `
+    <article class="undo-panel">
+      <span>Completed ${state.lastUndo.label} for ${state.lastUndo.xp} XP</span>
+      <button type="button" data-undo-last>Undo</button>
+    </article>
+  `;
+}
+
 function taskCard(task, day) {
   const done = state.taskCompletions[taskKey(day.dayNumber, task.id)];
   return `
     <article class="task-card ${task.featured ? "featured" : ""} ${done ? "done" : ""}">
-      <button type="button" class="task-check" data-task="${task.id}" ${done ? "disabled" : ""} aria-label="Complete ${task.title}">
-        ${done ? "✓" : "+"}
+      <button type="button" class="task-check ${done ? "undo-check" : ""}" data-task="${task.id}" aria-label="${done ? "Undo" : "Complete"} ${task.title}">
+        ${done ? "Undo" : "+"}
       </button>
       <div>
         <p class="eyebrow">${task.featured ? "Big reward task" : task.skills.join(" + ")}</p>
@@ -477,6 +489,11 @@ function bindEvents() {
     saveState(state);
     render();
   }));
+  app.querySelector("[data-undo-last]")?.addEventListener("click", () => {
+    state = undoLastAction(state);
+    saveState(state);
+    render();
+  });
   app.querySelectorAll("[data-task]").forEach((button) => button.addEventListener("click", () => {
     state = completeTask(state, withSubstitutions(program[selectedDay - 1]), button.dataset.task);
     saveState(state);
