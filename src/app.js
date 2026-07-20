@@ -41,7 +41,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260720-7", { updateViaCache: "none" })
+    .register("./sw.js?v=20260720-8", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -174,7 +174,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260720-7</p>
+            <p>Build 20260720-8</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -185,13 +185,13 @@ function tasksView() {
 
 function microTaskCard(task, index) {
   return `
-    <article class="task-card micro tier-${task.tier}">
+    <article class="task-card micro tier-${task.tier} task-card-informative" data-task-info="micro:${index}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
       <button type="button" class="task-check" data-micro-task="${index}" aria-label="Complete ${task.title}">+</button>
       <div>
         <p class="eyebrow">Tier ${task.tier} - ${task.skills.join(" + ")}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
-        <small>${task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"}</small>
+        <small>${task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"} - Tap for instructions</small>
       </div>
       <strong>${task.xp} XP</strong>
     </article>
@@ -211,7 +211,7 @@ function undoPanel() {
 function taskCard(task, day) {
   const done = state.taskCompletions[taskKey(day.dayNumber, task.id)];
   return `
-    <article class="task-card ${task.featured ? "featured" : ""} ${done ? "done" : ""}">
+    <article class="task-card task-card-informative ${task.featured ? "featured" : ""} ${done ? "done" : ""}" data-task-info="planned:${task.id}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
       <button type="button" class="task-check ${done ? "undo-check" : ""}" data-task="${task.id}" aria-label="${done ? "Undo" : "Complete"} ${task.title}">
         ${done ? "Undo" : "+"}
       </button>
@@ -219,6 +219,7 @@ function taskCard(task, day) {
         <p class="eyebrow">${task.featured ? "Big reward task" : task.skills.join(" + ")}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
+        <small>Tap for instructions</small>
       </div>
       <strong>${task.xp} XP</strong>
     </article>
@@ -501,6 +502,20 @@ function bindEvents() {
     route = button.dataset.route;
     render();
   }));
+  app.querySelectorAll("[data-task-info]").forEach((card) => {
+    const openGuide = (event) => {
+      if (event.target.closest("button")) return;
+      if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      const [source, identifier] = card.dataset.taskInfo.split(":");
+      const task = source === "micro"
+        ? state.microTasks[Number(identifier)]
+        : dailyTasksFor(withSubstitutions(program[selectedDay - 1])).find((item) => item.id === identifier);
+      if (task) showTaskInfo(task);
+    };
+    card.addEventListener("click", openGuide);
+    card.addEventListener("keydown", openGuide);
+  });
   app.querySelectorAll("[data-set]").forEach((button) => button.addEventListener("click", () => {
     const [dayNumber, exerciseIndex, setIndex] = button.dataset.set.split(":").map(Number);
     state = toggleSet(state, dayNumber, exerciseIndex, setIndex);
@@ -653,6 +668,94 @@ function download(content, filename, type) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+const movementGuides = [
+  guide("Scapular push-up", /scapular push-ups?/i, "Start in a high plank with straight elbows.", ["Let the chest sink slightly as the shoulder blades move together.", "Push the floor away and spread the shoulder blades without bending the elbows."], "Use a wall or elevate your hands."),
+  guide("Explosive push-up", /explosive push-ups?/i, "Use a firm floor and begin in a strong push-up position.", ["Lower under control, then drive up as quickly as possible.", "Land with soft elbows and reset before the next rep."], "Use an incline or perform fast push-ups without leaving the floor."),
+  guide("Push-up", /push-ups?/i, "Place hands just outside shoulder width and form a straight line from head to heels.", ["Brace the stomach and squeeze the glutes.", "Lower the chest between the hands while keeping elbows about 30-45 degrees from the body.", "Press the floor away without letting the hips sag."], "Place your hands on a stable chair, counter, or wall."),
+  guide("Sit-up or crunch", /sit-ups?|crunches?/i, "Lie on your back with knees bent and feet planted.", ["Gently brace the stomach before moving.", "Curl the ribs toward the pelvis without pulling on the neck.", "Lower slowly instead of dropping back."], "Use a smaller crunch range."),
+  guide("Split squat", /split squats?/i, "Stand in a staggered stance with both feet pointing forward.", ["Drop the back knee toward the floor while keeping the front foot planted.", "Keep the front knee tracking over the toes.", "Drive through the front foot to stand."], "Hold a wall or chair and use a shorter range."),
+  guide("Squat", /squats?/i, "Stand around shoulder width with the whole foot on the floor.", ["Sit the hips down between the knees.", "Keep knees tracking in the same direction as the toes.", "Stand by pushing the floor away."], "Squat to a chair and stand back up."),
+  guide("Reverse lunge", /reverse lunges?|lunges?/i, "Stand tall with feet under the hips.", ["Step one foot back and lower the back knee toward the floor.", "Keep most of the pressure through the front foot.", "Push through the front leg to return to standing."], "Hold a wall and reduce the depth."),
+  guide("Plank", /plank/i, "Place elbows under shoulders and extend the legs behind you.", ["Squeeze glutes and brace as if preparing for a light punch.", "Keep ribs down and hips level.", "Breathe slowly without losing tension."], "Plank from the knees or with elbows on a chair."),
+  guide("Calf raise", /calf raises?/i, "Stand tall with feet parallel and use a wall for balance if needed.", ["Rise onto the balls of the feet as high as comfortable.", "Pause briefly at the top.", "Lower the heels slowly through the full range."], "Use both legs and a smaller range."),
+  guide("Tibialis raise", /tibialis raises?/i, "Lean your back against a wall with feet slightly forward.", ["Keep heels planted and lift the toes toward the shins.", "Pause at the top, then lower under control."], "Move the feet closer to the wall."),
+  guide("Glute bridge", /glute bridges?/i, "Lie on your back with knees bent and feet near the hips.", ["Brace lightly and press through the heels.", "Lift the hips by squeezing the glutes.", "Pause at the top without arching the lower back."], "Use a smaller range."),
+  guide("Mountain climber", /mountain climbers?/i, "Begin in a high plank with hands under shoulders.", ["Bring one knee toward the chest while keeping the hips steady.", "Switch sides smoothly and keep pressing the floor away."], "Move slowly or elevate the hands."),
+  guide("Step-up", /step-ups?/i, "Use a stable, non-rolling step or low chair against a wall.", ["Place the whole working foot on the surface.", "Drive through that leg to stand tall.", "Lower slowly without dropping onto the trailing foot."], "Use a lower step and hold a wall."),
+  guide("Pogo jump", /pogo jumps?/i, "Stand tall with knees softly unlocked.", ["Make small, quick jumps mainly from the ankles.", "Land quietly on the balls of the feet and keep the body tall."], "Perform quick calf raises without leaving the floor."),
+  guide("Skater hop", /skater hops?|skater holds?/i, "Balance on one leg with the knee softly bent.", ["Hop sideways and land on the opposite leg.", "Absorb the landing quietly and hold balance before the next rep."], "Step sideways instead of jumping."),
+  guide("Bar hang", /bar hang|hanging/i, "Use a secure bar and a grip you can maintain safely.", ["Hang with long arms while keeping the shoulders gently active.", "Keep breathing and split the total time into short sets if grip fades."], "Keep the feet lightly supported on the floor or a chair."),
+  guide("Ring row", /ring rows?/i, "Set the rings securely and hold them with straight arms.", ["Keep the body in one straight line.", "Pull the rings toward the ribs and squeeze the shoulder blades.", "Lower under control until the arms are straight."], "Stand more upright."),
+  guide("Mobility flow", /mobility|warm-up|cooldown/i, "Move only through comfortable, pain-free ranges.", ["Use slow circles and controlled reaches for the areas named in the task.", "Keep breathing and avoid forcing a stretch."], "Reduce the range or perform the movements seated."),
+  guide("Easy movement", /walking|breathing|easy extra movement/i, "Choose a relaxed pace that lets you breathe comfortably.", ["Keep the effort easy and continuous.", "For breathing, inhale gently through the nose and use a longer relaxed exhale."], "Shorten the duration and move at any comfortable pace.")
+];
+
+function guide(name, pattern, setup, steps, easier) {
+  return { name, pattern, setup, steps, easier };
+}
+
+function showTaskInfo(task) {
+  document.querySelector(".task-info-layer")?.remove();
+  const guides = task.exercise
+    ? [{
+        name: task.exercise.name,
+        setup: task.exercise.description || `Prepare for ${task.exercise.name}.`,
+        steps: [task.exercise.cue, `Complete ${task.detail} with controlled, pain-free reps.`],
+        easier: task.exercise.regression,
+        avoid: task.exercise.mistakes
+      }]
+    : movementGuides.filter((item) => item.pattern.test(`${task.title} ${task.detail}`));
+  const sections = guides.length ? guides : [{
+    name: task.title,
+    setup: task.detail,
+    steps: ["Move at a controlled pace and keep every repetition comfortable.", "Stop the set before technique breaks down."],
+    easier: "Reduce the repetitions, range of motion, or duration."
+  }];
+  const layer = document.createElement("div");
+  layer.className = "task-info-layer";
+  layer.setAttribute("role", "dialog");
+  layer.setAttribute("aria-modal", "true");
+  layer.setAttribute("aria-label", `${task.title} instructions`);
+  layer.innerHTML = `
+    <article class="task-info-panel">
+      <div class="task-info-head">
+        <div>
+          <p class="eyebrow">Movement guide</p>
+          <h2>${task.title}</h2>
+          <p>${task.detail}</p>
+        </div>
+        <button type="button" class="task-info-close" aria-label="Close instructions">Close</button>
+      </div>
+      <div class="task-guide-list">
+        ${sections.map((section) => `
+          <section>
+            <h3>${section.name}</h3>
+            <p><b>Setup:</b> ${section.setup}</p>
+            <ol>${section.steps.map((step) => `<li>${step}</li>`).join("")}</ol>
+            ${section.avoid ? `<p><b>Avoid:</b> ${section.avoid}</p>` : ""}
+            <p><b>Easier option:</b> ${section.easier}</p>
+          </section>
+        `).join("")}
+      </div>
+      <p class="task-safety-note">Stop if the movement causes sharp or worsening pain.</p>
+    </article>
+  `;
+  document.body.append(layer);
+  const close = () => {
+    layer.remove();
+    document.removeEventListener("keydown", closeWithEscape);
+  };
+  const closeWithEscape = (event) => {
+    if (event.key === "Escape") close();
+  };
+  layer.querySelector(".task-info-close").addEventListener("click", close);
+  layer.addEventListener("click", (event) => {
+    if (event.target === layer) close();
+  });
+  document.addEventListener("keydown", closeWithEscape);
+  layer.querySelector(".task-info-close").focus();
 }
 
 function celebrateTask(source, xp) {
