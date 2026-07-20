@@ -160,7 +160,7 @@ function tasksView() {
         </article>
         <article class="card">
           <h3>App version</h3>
-          <p>Build 20260720-1</p>
+          <p>Build 20260720-2</p>
         </article>
       </aside>
     </section>
@@ -662,7 +662,7 @@ function celebrateTask(source, xp) {
     flash.remove();
     toast.remove();
     celebrationLayer.querySelectorAll(".burst-particle").forEach((particle) => particle.remove());
-  }, 900);
+  }, 1800);
 }
 
 function celebrateLevelUp(level) {
