@@ -627,6 +627,76 @@ summary {
   box-shadow: 0 0 14px rgba(20, 184, 166, 0.75);
 }
 
+.level-up-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, rgba(245, 158, 11, 0.32), transparent 42%),
+    rgba(15, 23, 42, 0.42);
+  animation: level-overlay 1650ms ease-out forwards;
+}
+
+.level-up-card {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: center;
+  min-width: min(82vw, 420px);
+  padding: 1.4rem;
+  border: 1px solid color-mix(in srgb, var(--brand-2) 78%, white);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #101827, #172033 58%, rgba(245, 158, 11, 0.24));
+  box-shadow:
+    0 0 0 8px rgba(245, 158, 11, 0.12),
+    0 26px 70px rgba(0, 0, 0, 0.46);
+  animation: level-card 1500ms cubic-bezier(0.2, 0.95, 0.18, 1) forwards;
+}
+
+.level-up-card span {
+  color: var(--brand);
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+.level-up-card strong {
+  color: #fff7ed;
+  font-size: clamp(2.5rem, 12vw, 5.5rem);
+  line-height: 0.95;
+  text-shadow:
+    0 0 22px rgba(245, 158, 11, 0.75),
+    0 4px 0 rgba(0, 0, 0, 0.22);
+}
+
+.level-up-card small {
+  color: #fde68a;
+  font-weight: 800;
+}
+
+.level-particle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--brand-2);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.9);
+  animation: level-burst 1300ms cubic-bezier(0.16, 0.88, 0.22, 1) var(--delay) forwards;
+}
+
+.level-particle:nth-child(2n) {
+  border-radius: 999px;
+  background: var(--brand);
+  box-shadow: 0 0 18px rgba(20, 184, 166, 0.9);
+}
+
+.level-particle:nth-child(5n) {
+  width: 7px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff7ed;
+}
+
 @keyframes flash-out {
   from {
     opacity: 1;
@@ -662,10 +732,61 @@ summary {
   }
 }
 
+@keyframes level-overlay {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes level-card {
+  0% {
+    opacity: 0;
+    transform: translateY(26px) scale(0.72) rotate(-1deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.08) rotate(0.5deg);
+  }
+  32% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  74% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.96);
+  }
+}
+
+@keyframes level-burst {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.1) rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .celebration-flash,
   .xp-toast,
-  .burst-particle {
+  .burst-particle,
+  .level-up-overlay,
+  .level-up-card,
+  .level-particle {
     animation-duration: 1ms;
   }
 }

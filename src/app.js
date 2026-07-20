@@ -489,10 +489,13 @@ function bindEvents() {
   }));
   app.querySelectorAll("[data-micro-task]").forEach((button) => button.addEventListener("click", () => {
     const task = state.microTasks[Number(button.dataset.microTask)];
+    const beforeLevel = stats(state, program).totalLevel;
     celebrateTask(button, task?.xp || 0);
     state = completeMicroTask(state, Number(button.dataset.microTask));
+    const afterLevel = stats(state, program).totalLevel;
     saveState(state);
     render();
+    if (afterLevel > beforeLevel) celebrateLevelUp(afterLevel);
   }));
   app.querySelector("[data-undo-last]")?.addEventListener("click", () => {
     state = undoLastAction(state);
@@ -503,16 +506,22 @@ function bindEvents() {
     const day = withSubstitutions(program[selectedDay - 1]);
     const task = dailyTasksFor(day).find((item) => item.id === button.dataset.task);
     const wasDone = state.taskCompletions[taskKey(day.dayNumber, button.dataset.task)];
+    const beforeLevel = stats(state, program).totalLevel;
     if (!wasDone) celebrateTask(button, task?.xp || 0);
     state = completeTask(state, day, button.dataset.task);
+    const afterLevel = stats(state, program).totalLevel;
     saveState(state);
     render();
+    if (!wasDone && afterLevel > beforeLevel) celebrateLevelUp(afterLevel);
   }));
   app.querySelector("#workout-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
+    const beforeLevel = stats(state, program).totalLevel;
     state = completeWorkout(state, withSubstitutions(program[selectedDay - 1]), new FormData(event.currentTarget));
+    const afterLevel = stats(state, program).totalLevel;
     saveState(state);
     render();
+    if (afterLevel > beforeLevel) celebrateLevelUp(afterLevel);
   });
   app.querySelectorAll(".calendar-day").forEach((button) => button.addEventListener("click", () => {
     selectedDay = Number(button.dataset.day);
@@ -650,4 +659,37 @@ function celebrateTask(source, xp) {
     toast.remove();
     celebrationLayer.querySelectorAll(".burst-particle").forEach((particle) => particle.remove());
   }, 900);
+}
+
+function celebrateLevelUp(level) {
+  const overlay = document.createElement("div");
+  overlay.className = "level-up-overlay";
+  overlay.innerHTML = `
+    <div class="level-up-card">
+      <span>Total level ${level}</span>
+      <strong>LEVEL UP</strong>
+      <small>New training power unlocked</small>
+    </div>
+  `;
+  celebrationLayer.append(overlay);
+
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight / 2;
+  for (let index = 0; index < 34; index += 1) {
+    const particle = document.createElement("span");
+    const angle = (Math.PI * 2 * index) / 34;
+    const distance = 95 + (index % 6) * 18;
+    particle.className = "level-particle";
+    particle.style.left = `${centerX}px`;
+    particle.style.top = `${centerY}px`;
+    particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+    particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+    particle.style.setProperty("--delay", `${index * 10}ms`);
+    celebrationLayer.append(particle);
+  }
+
+  window.setTimeout(() => {
+    overlay.remove();
+    celebrationLayer.querySelectorAll(".level-particle").forEach((particle) => particle.remove());
+  }, 1800);
 }
