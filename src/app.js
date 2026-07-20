@@ -44,7 +44,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260720-10", { updateViaCache: "none" })
+    .register("./sw.js?v=20260721-11", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -177,7 +177,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260720-10</p>
+            <p>Build 20260721-11</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -687,26 +687,10 @@ function bindEvents() {
   app.querySelector("[data-update-app]")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
-    button.textContent = "Checking...";
-    if ("serviceWorker" in navigator) {
-      const registration = serviceWorkerRegistration || await navigator.serviceWorker.getRegistration();
-      if (registration) {
-        button.textContent = "Updating...";
-        await registration.update().catch(() => {});
-        const pendingWorker = registration.installing || registration.waiting;
-        if (pendingWorker && pendingWorker.state !== "activated") {
-          await Promise.race([
-            new Promise((resolve) => pendingWorker.addEventListener("statechange", () => {
-              if (["activated", "redundant"].includes(pendingWorker.state)) resolve();
-            })),
-            new Promise((resolve) => setTimeout(resolve, 5000))
-          ]);
-        }
-      }
-    }
-    const updateUrl = new URL(window.location.href);
-    updateUrl.searchParams.set("update", Date.now().toString());
-    window.location.replace(updateUrl.toString());
+    button.textContent = "Updating...";
+    const resetUrl = new URL("./reset-update.html", window.location.href);
+    resetUrl.searchParams.set("update", Date.now().toString());
+    window.location.replace(resetUrl.toString());
   });
   app.querySelectorAll("[data-export]").forEach((button) => button.addEventListener("click", () => {
     const type = button.dataset.export;

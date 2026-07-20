@@ -7,6 +7,7 @@ const dist = join(root, "dist");
 
 const files = [
   ["index.html", "text/html; charset=utf-8"],
+  ["reset-update.html", "text/html; charset=utf-8"],
   ["manifest.webmanifest", "application/manifest+json; charset=utf-8"],
   ["sw.js", "text/javascript; charset=utf-8"],
   ["src/app.js", "text/javascript; charset=utf-8"],

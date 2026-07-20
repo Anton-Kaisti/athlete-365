@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Updating Athlete 365</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: #0f172a; color: #e5edf7; }
+      main { width: min(90vw, 420px); padding: 2rem; text-align: center; border: 1px solid #2a3549; border-radius: 8px; background: #172033; }
+      p { color: #9aa7b8; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Updating Athlete 365</h1>
+      <p id="status">Clearing the old app cache...</p>
+    </main>
+    <script>
+      (async () => {
+        try {
+          if ("serviceWorker" in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((registration) => registration.unregister()));
+          }
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.filter((key) => key.startsWith("athlete-365-")).map((key) => caches.delete(key)));
+          }
+          document.querySelector("#status").textContent = "Update ready. Reloading...";
+        } finally {
+          const target = new URL("./", window.location.href);
+          target.searchParams.set("fresh", Date.now().toString());
+          window.location.replace(target.toString());
+        }
+      })();
+    </script>
+  </body>
+</html>
