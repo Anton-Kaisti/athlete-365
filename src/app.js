@@ -33,7 +33,7 @@ celebrationLayer.className = "celebration-layer";
 document.body.append(celebrationLayer);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=20260720-4").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=20260720-5").catch(() => {});
 }
 
 render();
@@ -160,7 +160,7 @@ function tasksView() {
         </article>
         <article class="card">
           <h3>App version</h3>
-          <p>Build 20260720-4</p>
+          <p>Build 20260720-5</p>
         </article>
       </aside>
     </section>
@@ -493,13 +493,13 @@ function bindEvents() {
   }));
   app.querySelectorAll("[data-micro-task]").forEach((button) => button.addEventListener("click", () => {
     const task = state.microTasks[Number(button.dataset.microTask)];
-    const beforeLevel = stats(state, program).totalLevel;
+    const beforeSkillLevels = skillLevelsFor(state);
     celebrateTask(button, task?.xp || 0);
     state = completeMicroTask(state, Number(button.dataset.microTask));
-    const afterLevel = stats(state, program).totalLevel;
+    const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
-    if (afterLevel > beforeLevel) celebrateLevelUp(afterLevel);
+    if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   }));
   app.querySelector("[data-undo-last]")?.addEventListener("click", () => {
     state = undoLastAction(state);
@@ -510,22 +510,22 @@ function bindEvents() {
     const day = withSubstitutions(program[selectedDay - 1]);
     const task = dailyTasksFor(day).find((item) => item.id === button.dataset.task);
     const wasDone = state.taskCompletions[taskKey(day.dayNumber, button.dataset.task)];
-    const beforeLevel = stats(state, program).totalLevel;
+    const beforeSkillLevels = skillLevelsFor(state);
     if (!wasDone) celebrateTask(button, task?.xp || 0);
     state = completeTask(state, day, button.dataset.task);
-    const afterLevel = stats(state, program).totalLevel;
+    const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
-    if (!wasDone && afterLevel > beforeLevel) celebrateLevelUp(afterLevel);
+    if (!wasDone && skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   }));
   app.querySelector("#workout-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    const beforeLevel = stats(state, program).totalLevel;
+    const beforeSkillLevels = skillLevelsFor(state);
     state = completeWorkout(state, withSubstitutions(program[selectedDay - 1]), new FormData(event.currentTarget));
-    const afterLevel = stats(state, program).totalLevel;
+    const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
-    if (afterLevel > beforeLevel) celebrateLevelUp(afterLevel);
+    if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   });
   app.querySelectorAll(".calendar-day").forEach((button) => button.addEventListener("click", () => {
     selectedDay = Number(button.dataset.day);
@@ -663,17 +663,37 @@ function celebrateTask(source, xp) {
   }, 3300);
 }
 
-function celebrateLevelUp(level) {
+function skillLevelsFor(currentState) {
+  return Object.fromEntries(
+    Object.entries(currentState.xp).map(([skill, xp]) => [skill, levelFromXp(xp)])
+  );
+}
+
+function skillLevelChanges(before, after) {
+  return Object.entries(after)
+    .filter(([skill, level]) => level > (before[skill] || 1))
+    .map(([skill, level]) => ({ skill, level, previousLevel: before[skill] || 1 }));
+}
+
+function celebrateLevelUp(totalLevel, skillChanges) {
   celebrationLayer.querySelector(".level-up-overlay")?.remove();
   const overlay = document.createElement("button");
   overlay.type = "button";
   overlay.className = "level-up-overlay";
-  overlay.setAttribute("aria-label", `Total level ${level}. Tap to continue.`);
+  const skillSummary = skillChanges.map(({ skill, level }) => `${cap(skill)} level ${level}`).join(", ");
+  overlay.setAttribute("aria-label", `${skillSummary}. Total level ${totalLevel}. Tap to continue.`);
   overlay.innerHTML = `
     <div class="level-up-card">
-      <span>Total level ${level}</span>
+      <span>Total level ${totalLevel}</span>
       <strong>LEVEL UP</strong>
-      <small>New training power unlocked</small>
+      <div class="level-skill-list">
+        ${skillChanges.map(({ skill, level, previousLevel }) => `
+          <div>
+            <b>${cap(skill)}</b>
+            <span>Level ${previousLevel} to ${level}</span>
+          </div>
+        `).join("")}
+      </div>
       <em>Tap to continue</em>
     </div>
   `;

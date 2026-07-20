@@ -666,7 +666,7 @@ summary {
   animation: level-card-in 720ms cubic-bezier(0.2, 0.95, 0.18, 1) both;
 }
 
-.level-up-card span {
+.level-up-card > span {
   color: var(--brand);
   font-weight: 900;
   text-transform: uppercase;
@@ -682,9 +682,33 @@ summary {
     0 4px 0 rgba(0, 0, 0, 0.22);
 }
 
-.level-up-card small {
+.level-skill-list {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
+.level-skill-list div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.level-skill-list b {
+  color: #fff7ed;
+  font-size: 1.05rem;
+}
+
+.level-skill-list span {
   color: #fde68a;
-  font-weight: 800;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .level-up-card em {
