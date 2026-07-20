@@ -33,7 +33,16 @@ celebrationLayer.className = "celebration-layer";
 document.body.append(celebrationLayer);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=20260720-5").catch(() => {});
+  let refreshingForUpdate = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshingForUpdate) return;
+    refreshingForUpdate = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker
+    .register("./sw.js?v=20260720-6", { updateViaCache: "none" })
+    .then((registration) => registration.update())
+    .catch(() => {});
 }
 
 render();
@@ -160,7 +169,7 @@ function tasksView() {
         </article>
         <article class="card">
           <h3>App version</h3>
-          <p>Build 20260720-5</p>
+          <p>Build 20260720-6</p>
         </article>
       </aside>
     </section>
