@@ -352,6 +352,50 @@ dd {
   white-space: nowrap;
 }
 
+.task-card-aside {
+  display: grid;
+  justify-items: end;
+  gap: 0.45rem;
+}
+
+.task-card-aside > strong {
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.task-timer {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+}
+
+.task-timer output {
+  color: var(--text);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+.task-timer output.complete {
+  color: var(--ok);
+}
+
+.task-timer > div {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.task-timer button {
+  min-height: 34px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.task-timer .timer-toggle {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
 .task-check {
   width: 46px;
   height: 46px;
@@ -1000,5 +1044,10 @@ summary {
 
   .task-info-head {
     display: grid;
+  }
+
+  .task-card-aside,
+  .task-timer {
+    justify-items: start;
   }
 }
