@@ -28,6 +28,9 @@ let route = "tasks";
 let selectedDay = currentProgramDay();
 
 const app = document.querySelector("#app");
+const celebrationLayer = document.createElement("div");
+celebrationLayer.className = "celebration-layer";
+document.body.append(celebrationLayer);
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
@@ -485,6 +488,8 @@ function bindEvents() {
     render();
   }));
   app.querySelectorAll("[data-micro-task]").forEach((button) => button.addEventListener("click", () => {
+    const task = state.microTasks[Number(button.dataset.microTask)];
+    celebrateTask(button, task?.xp || 0);
     state = completeMicroTask(state, Number(button.dataset.microTask));
     saveState(state);
     render();
@@ -495,7 +500,11 @@ function bindEvents() {
     render();
   });
   app.querySelectorAll("[data-task]").forEach((button) => button.addEventListener("click", () => {
-    state = completeTask(state, withSubstitutions(program[selectedDay - 1]), button.dataset.task);
+    const day = withSubstitutions(program[selectedDay - 1]);
+    const task = dailyTasksFor(day).find((item) => item.id === button.dataset.task);
+    const wasDone = state.taskCompletions[taskKey(day.dayNumber, button.dataset.task)];
+    if (!wasDone) celebrateTask(button, task?.xp || 0);
+    state = completeTask(state, day, button.dataset.task);
     saveState(state);
     render();
   }));
@@ -606,4 +615,39 @@ function download(content, filename, type) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function celebrateTask(source, xp) {
+  const rect = source.getBoundingClientRect();
+  const originX = rect.left + rect.width / 2;
+  const originY = rect.top + rect.height / 2;
+  const flash = document.createElement("div");
+  flash.className = "celebration-flash";
+  celebrationLayer.append(flash);
+
+  const toast = document.createElement("div");
+  toast.className = "xp-toast";
+  toast.textContent = xp ? `+${xp} XP` : "Task complete";
+  toast.style.left = `${Math.min(window.innerWidth - 120, Math.max(16, originX - 42))}px`;
+  toast.style.top = `${Math.max(16, originY - 72)}px`;
+  celebrationLayer.append(toast);
+
+  for (let index = 0; index < 16; index += 1) {
+    const particle = document.createElement("span");
+    const angle = (Math.PI * 2 * index) / 16;
+    const distance = 42 + (index % 4) * 12;
+    particle.className = "burst-particle";
+    particle.style.left = `${originX}px`;
+    particle.style.top = `${originY}px`;
+    particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+    particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+    particle.style.setProperty("--delay", `${index * 8}ms`);
+    celebrationLayer.append(particle);
+  }
+
+  window.setTimeout(() => {
+    flash.remove();
+    toast.remove();
+    celebrationLayer.querySelectorAll(".burst-particle").forEach((particle) => particle.remove());
+  }, 900);
 }
