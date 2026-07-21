@@ -1,5 +1,7 @@
 import { exerciseLibrary, levelFromXp, xpForLevel, validateProgram } from "./program.js";
 import {
+  DAILY_TASK_MILESTONES,
+  QUICK_SET_BONUS_XP,
   completeMicroTask,
   completeTask,
   completeWorkout,
@@ -10,6 +12,7 @@ import {
   loadState,
   programForState,
   readinessAdvice,
+  refreshMicroTasks,
   resetState,
   saveState,
   signIn,
@@ -29,6 +32,7 @@ let route = "tasks";
 let selectedDay = currentProgramDay();
 const taskTimers = new Map();
 let timerTicker = null;
+let audioContext = null;
 
 const app = document.querySelector("#app");
 const celebrationLayer = document.createElement("div");
@@ -44,7 +48,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260721-11", { updateViaCache: "none" })
+    .register("./sw.js?v=20260721-12", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -115,6 +119,8 @@ function tasksView() {
   const tasks = dailyTasksFor(day);
   const progress = taskProgress(state, day);
   const s = stats(state, program);
+  const quickCompleted = state.microTasks.filter((task) => task.completed).length;
+  const todayRewards = state.dailyTaskRewards?.[new Date().toISOString().slice(0, 10)] || {};
   const remainingXp = tasks
     .filter((task) => !state.taskCompletions[taskKey(day.dayNumber, task.id)])
     .reduce((sum, task) => sum + task.xp, 0);
@@ -125,9 +131,17 @@ function tasksView() {
           <div>
             <p class="eyebrow">Quick task queue</p>
             <h2>${state.profile.name}'s quick tasks</h2>
-            <p>Most tasks need no equipment. Higher tiers unlock as your total level rises.</p>
+            <p>Complete all five for ${QUICK_SET_BONUS_XP} bonus XP. Finished tasks stay here until you refresh the set.</p>
           </div>
-          <strong class="level-badge">${s.microTasksDone} done</strong>
+          <strong class="level-badge">${quickCompleted}/5</strong>
+        </div>
+        <div class="quick-set-toolbar">
+          <div>
+            <span>Current set</span>
+            <div class="bar"><span style="width:${quickCompleted * 20}%"></span></div>
+            <small>${state.quickSetBonus?.quickSetId === state.quickSetId ? `${QUICK_SET_BONUS_XP} bonus XP earned` : `${5 - quickCompleted} left for the bonus`}</small>
+          </div>
+          <button type="button" data-refresh-micro>${quickCompleted === 5 ? "New set" : "Refresh tasks"}</button>
         </div>
         <div class="micro-task-list">
           ${state.microTasks.map((task, index) => microTaskCard(task, index)).join("")}
@@ -156,8 +170,15 @@ function tasksView() {
         ${metricCards(s)}
         ${skillsPanel()}
         <article class="card">
+          <h3>Today's task prizes</h3>
+          <p>${s.dailyTasksDone} tasks completed today. Quick and planned tasks both count.</p>
+          <div class="bonus-grid">
+            ${Object.entries(DAILY_TASK_MILESTONES).map(([count, xp]) => bonusPill(`${count} tasks`, `${xp} XP`, todayRewards[count])).join("")}
+          </div>
+        </article>
+        <article class="card">
           <h3>Task tiers</h3>
-          <p>Tier 1 is simple bodyweight work like 10 push-ups, 10 sit-ups, squats, planks, lunges, and mobility. Later tiers add rounds, density blocks, and optional home equipment.</p>
+          <p>Tier 1 now includes a broader mix of strength, balance, core, and mobility. Later tiers add circuits, bands, rings, jump rope, and density work as your total level rises.</p>
         </article>
         <article class="card">
           <h3>Streak bonuses</h3>
@@ -177,7 +198,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260721-11</p>
+            <p>Build 20260721-12</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -189,13 +210,13 @@ function tasksView() {
 function microTaskCard(task, index) {
   const timerKey = `micro:${task.id}`;
   return `
-    <article class="task-card micro tier-${task.tier} task-card-informative" data-task-info="micro:${index}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
-      <button type="button" class="task-check" data-micro-task="${index}" aria-label="Complete ${task.title}">+</button>
+    <article class="task-card micro tier-${task.tier} task-card-informative ${task.completed ? "done" : ""}" data-task-info="micro:${index}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
+      <button type="button" class="task-check" data-micro-task="${index}" aria-label="${task.completed ? "Completed" : "Complete"} ${task.title}" ${task.completed ? "disabled" : ""}>${task.completed ? "✓" : "+"}</button>
       <div>
         <p class="eyebrow">Tier ${task.tier} - ${task.skills.join(" + ")}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
-        <small>${task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"} - Tap for instructions</small>
+        <small>${task.completed ? "Completed - stays in this set" : `${task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"} - Tap for instructions`}</small>
       </div>
       ${taskCardAside(task, timerKey)}
     </article>
@@ -250,7 +271,7 @@ function taskCardAside(task, timerKey) {
 }
 
 function timerSnapshot(key, duration) {
-  const timer = taskTimers.get(key) || { duration, remaining: duration, running: false, endAt: null };
+  const timer = taskTimers.get(key) || { duration, remaining: duration, running: false, endAt: null, notified: false };
   timer.duration = duration;
   if (timer.running) timer.remaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
   if (timer.remaining === 0) timer.running = false;
@@ -269,7 +290,11 @@ function updateTimerDisplays() {
       timer.remaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
       if (timer.remaining === 0) {
         timer.running = false;
-        navigator.vibrate?.([150, 80, 150]);
+        if (!timer.notified) {
+          timer.notified = true;
+          playTimerFinishedSound();
+          navigator.vibrate?.([150, 80, 150]);
+        }
       }
     }
     const output = app.querySelector(`[data-timer-display="${CSS.escape(key)}"]`);
@@ -288,6 +313,33 @@ function updateTimerDisplays() {
 
 function ensureTimerTicker() {
   if (!timerTicker) timerTicker = setInterval(updateTimerDisplays, 250);
+}
+
+function unlockAudio() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+  audioContext ||= new AudioContext();
+  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  return audioContext;
+}
+
+function playTimerFinishedSound() {
+  const context = unlockAudio();
+  if (!context) return;
+  const start = context.currentTime;
+  [659.25, 783.99, 987.77].forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const noteStart = start + index * 0.16;
+    oscillator.type = "sine";
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, noteStart);
+    gain.gain.exponentialRampToValueAtTime(0.2, noteStart + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.28);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(noteStart);
+    oscillator.stop(noteStart + 0.3);
+  });
 }
 
 function dashboardView() {
@@ -567,6 +619,7 @@ function bindEvents() {
     render();
   }));
   app.querySelectorAll("[data-timer-toggle]").forEach((button) => button.addEventListener("click", () => {
+    unlockAudio();
     const key = button.dataset.timerToggle;
     const timer = timerSnapshot(key, Number(button.dataset.timerDuration));
     if (timer.running) {
@@ -574,6 +627,7 @@ function bindEvents() {
       timer.running = false;
     } else {
       if (timer.remaining === 0) timer.remaining = timer.duration;
+      timer.notified = false;
       timer.endAt = Date.now() + timer.remaining * 1000;
       timer.running = true;
       ensureTimerTicker();
@@ -582,7 +636,7 @@ function bindEvents() {
   }));
   app.querySelectorAll("[data-timer-reset]").forEach((button) => button.addEventListener("click", () => {
     const key = button.dataset.timerReset;
-    taskTimers.set(key, { duration: Number(button.dataset.timerDuration), remaining: Number(button.dataset.timerDuration), running: false, endAt: null });
+    taskTimers.set(key, { duration: Number(button.dataset.timerDuration), remaining: Number(button.dataset.timerDuration), running: false, endAt: null, notified: false });
     updateTimerDisplays();
   }));
   app.querySelectorAll("[data-task-info]").forEach((card) => {
@@ -615,6 +669,13 @@ function bindEvents() {
     render();
     if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   }));
+  app.querySelector("[data-refresh-micro]")?.addEventListener("click", () => {
+    const completed = state.microTasks.filter((task) => task.completed).length;
+    if (completed > 0 && completed < state.microTasks.length && !confirm(`Refresh now? Your ${completed}/5 progress will be cleared and the ${QUICK_SET_BONUS_XP} XP set bonus will be forfeited.`)) return;
+    state = refreshMicroTasks(state);
+    saveState(state);
+    render();
+  });
   app.querySelector("[data-undo-last]")?.addEventListener("click", () => {
     state = undoLastAction(state);
     saveState(state);

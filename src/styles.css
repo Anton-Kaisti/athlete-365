@@ -288,6 +288,28 @@ dd {
   margin-top: 1rem;
 }
 
+.quick-set-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.9rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.quick-set-toolbar > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.quick-set-toolbar small {
+  color: var(--brand-2);
+  font-weight: 700;
+}
+
 .planned-head {
   display: flex;
   justify-content: space-between;
@@ -322,6 +344,16 @@ dd {
 .task-card.micro.tier-3,
 .task-card.micro.tier-4 {
   background: color-mix(in srgb, var(--panel-2) 84%, var(--brand-2) 16%);
+}
+
+.task-card.micro.done {
+  opacity: 0.58;
+  filter: saturate(0.55);
+  background: color-mix(in srgb, var(--panel-2) 88%, var(--ok) 12%);
+}
+
+.task-card.micro.done h3 {
+  text-decoration: line-through;
 }
 
 .task-card.done {
@@ -1009,6 +1041,7 @@ summary {
   .metrics,
   .task-summary,
   .task-card,
+  .quick-set-toolbar,
   dl {
     grid-template-columns: 1fr;
   }
