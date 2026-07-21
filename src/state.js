@@ -1,6 +1,9 @@
 import { SKILLS, generateProgram, skillsForExercise, xpForExercise, levelFromXp, todayIso } from "./program.js";
 
 const KEY = "athlete365-state-v1";
+export const QUICK_TASK_COUNT = 5;
+export const QUICK_SET_BONUS_XP = 100;
+export const DAILY_TASK_MILESTONES = { 10: 100, 20: 250, 30: 450, 50: 900 };
 
 export function initialState() {
   const startDate = todayIso();
@@ -18,6 +21,9 @@ export function initialState() {
     xp: Object.fromEntries(SKILLS.map((skill) => [skill, 0])),
     microTasks: [],
     microTaskHistory: [],
+    quickSetId: 1,
+    quickSetBonus: null,
+    dailyTaskRewards: {},
     lastUndo: null,
     taskCompletions: {},
     streakBonuses: {},
@@ -77,6 +83,14 @@ export const microTaskPool = [
   tierTask(1, "10 Glute Bridges", "Complete 10 glute bridges with a pause at the top.", 12, ["legs", "core"]),
   tierTask(1, "20 Mountain Climbers", "Complete 10 reps per side at a steady pace.", 15, ["core", "athleticism"]),
   tierTask(1, "10 Scapular Push-Ups", "Move only your shoulder blades.", 12, ["push", "mobility"]),
+  tierTask(1, "8 Bird Dogs", "Complete 4 slow, balanced reps per side.", 12, ["core", "recovery"]),
+  tierTask(1, "12 Dead Bugs", "Complete 6 controlled reps per side.", 14, ["core"]),
+  tierTask(1, "20-Second Side Plank", "Hold 10 seconds per side with hips tall.", 14, ["core"]),
+  tierTask(1, "12 Wall Slides", "Keep ribs down and slide the arms smoothly.", 12, ["mobility", "recovery"]),
+  tierTask(1, "30-Second Single-Leg Balance", "Balance for 15 seconds per side near a support.", 10, ["athleticism", "recovery"]),
+  tierTask(1, "10 Good Mornings", "Hinge slowly with a long spine and soft knees.", 12, ["legs", "mobility"]),
+  tierTask(1, "20 Arm Circles", "Use 10 controlled circles in each direction.", 10, ["mobility", "recovery"]),
+  tierTask(1, "10 Incline Push-Ups", "Use a stable chair or counter and keep a straight body line.", 14, ["push", "strength"]),
   tierTask(2, "3 Rounds: 8 Push-Ups + 12 Squats", "Move steadily and stop before form breaks.", 45, ["push", "legs", "strength"]),
   tierTask(2, "2 Rounds: 20s Plank + 10 Sit-Ups", "Brace hard and keep reps controlled.", 36, ["core"]),
   tierTask(2, "20 Split Squats", "Complete 10 reps per side.", 34, ["legs", "strength"]),
@@ -84,22 +98,39 @@ export const microTaskPool = [
   tierTask(2, "30 Low Pogo Jumps", "Bounce lightly and quietly through the ankles.", 35, ["athleticism", "legs"]),
   tierTask(2, "3 Rounds: 10 Calf Raises + 10 Tibialis Raises", "Build lower-leg capacity.", 38, ["legs", "recovery"]),
   tierTask(2, "Chair Step-Ups", "Complete 10 controlled step-ups per side.", 42, ["legs", "strength"], ["chair"]),
+  tierTask(2, "Bear Crawl Practice", "Crawl forward and backward for 60 seconds with quiet steps.", 32, ["core", "athleticism"]),
+  tierTask(2, "Band Pull-Aparts", "Complete 3 sets of 12 smooth reps.", 34, ["pull", "recovery"], ["resistance bands"]),
+  tierTask(2, "Jump Rope Rhythm", "Accumulate 3 minutes of relaxed skipping.", 40, ["athleticism", "recovery"], ["jump rope"]),
+  tierTask(2, "Wall Sit", "Accumulate 90 seconds with steady breathing.", 34, ["legs", "strength"]),
   tierTask(3, "5-Minute Bodyweight Circuit", "Cycle push-ups, squats, sit-ups, and plank until time ends.", 80, ["strength", "core", "legs", "push"]),
   tierTask(3, "4 Rounds: 6 Push-Ups + 8 Lunges", "Keep every rep clean.", 70, ["push", "legs", "strength"]),
   tierTask(3, "90-Second Core Block", "Alternate hollow hold, side plank, and dead bug.", 62, ["core"]),
   tierTask(3, "Skater Hop Practice", "Complete 3 x 6 controlled side-to-side hops.", 65, ["athleticism", "legs"]),
   tierTask(3, "Pull-Up Bar Hang", "Accumulate 60 seconds of hanging.", 58, ["pull", "recovery"], ["pull-up bar"]),
+  tierTask(3, "Band Row Ladder", "Complete 8, 10, 12, and 14 controlled rows.", 68, ["pull", "strength"], ["resistance bands"]),
+  tierTask(3, "Jump Rope Intervals", "Complete 5 rounds of 30 seconds on and 30 seconds easy.", 72, ["athleticism", "recovery"], ["jump rope"]),
+  tierTask(3, "Single-Leg Strength Mix", "Complete 3 rounds of 6 step-ups and 6 split squats per side.", 74, ["legs", "strength"], ["chair"]),
   tierTask(4, "10-Minute Density Block", "Rotate push-ups, squats, and core with perfect form.", 140, ["strength", "push", "legs", "core"]),
   tierTask(4, "Advanced Leg Control", "3 rounds of split squats, calf raises, and skater holds.", 120, ["legs", "athleticism"]),
   tierTask(4, "Ring Row Mini-Workout", "4 x 8 ring rows with 60 seconds rest.", 110, ["pull", "strength"], ["rings"]),
-  tierTask(4, "Explosive Push-Up Practice", "5 x 3 fast push-ups with soft landings.", 105, ["push", "athleticism"])
+  tierTask(4, "Explosive Push-Up Practice", "5 x 3 fast push-ups with soft landings.", 105, ["push", "athleticism"]),
+  tierTask(4, "Pull and Core Complex", "Complete 5 rounds of ring rows and hollow holds.", 125, ["pull", "core", "strength"], ["rings"]),
+  tierTask(4, "Athletic Jump Rope Test", "Complete 10 rounds of 40 seconds fast and 20 seconds easy.", 135, ["athleticism", "recovery"], ["jump rope"])
 ];
 
 export function ensureMicroTasks(state) {
   const next = { ...state };
-  next.microTasks = Array.isArray(next.microTasks) ? [...next.microTasks] : [];
+  next.quickSetId = Number(next.quickSetId) || 1;
+  next.quickSetBonus = next.quickSetBonus || null;
+  next.dailyTaskRewards = next.dailyTaskRewards && typeof next.dailyTaskRewards === "object" ? { ...next.dailyTaskRewards } : {};
   next.microTaskHistory = Array.isArray(next.microTaskHistory) ? [...next.microTaskHistory] : [];
-  while (next.microTasks.length < 8) {
+  if (next.lastUndo?.type === "micro" && !next.lastUndo.quickSetId) next.lastUndo = null;
+  const seen = new Set();
+  next.microTasks = (Array.isArray(next.microTasks) ? next.microTasks : [])
+    .filter((task) => task?.id && !seen.has(task.id) && seen.add(task.id))
+    .slice(0, QUICK_TASK_COUNT)
+    .map((task) => ({ ...task, completed: Boolean(task.completed), completedAt: task.completedAt || null }));
+  while (next.microTasks.length < QUICK_TASK_COUNT) {
     next.microTasks.push(drawMicroTask(next, next.microTasks.length));
   }
   return next;
@@ -108,27 +139,46 @@ export function ensureMicroTasks(state) {
 export function completeMicroTask(state, slotIndex) {
   const next = structuredClone(ensureMicroTasks(state));
   const task = next.microTasks[slotIndex];
-  if (!task) return next;
+  if (!task || task.completed) return next;
+  const completedAt = new Date().toISOString();
   const historyEntry = {
     ...task,
-    completedAt: new Date().toISOString()
+    completed: true,
+    completedAt,
+    quickSetId: next.quickSetId
   };
   next.microTaskHistory.unshift(historyEntry);
   next.microTaskHistory = next.microTaskHistory.slice(0, 250);
   awardXp(next, task.skills, task.xp);
-  const replacement = drawMicroTask(next, slotIndex + next.microTaskHistory.length);
-  next.microTasks[slotIndex] = replacement;
+  next.microTasks[slotIndex] = { ...task, completed: true, completedAt };
   next.lastUndo = {
     type: "micro",
     slotIndex,
     task,
-    replacement,
     historyEntry,
+    quickSetId: next.quickSetId,
     xp: task.xp,
     skills: task.skills,
     label: task.title
   };
+  if (next.microTasks.every((item) => item.completed) && next.quickSetBonus?.quickSetId !== next.quickSetId) {
+    next.quickSetBonus = { quickSetId: next.quickSetId, date: completedAt, xp: QUICK_SET_BONUS_XP };
+    awardXp(next, ["strength", "recovery"], QUICK_SET_BONUS_XP);
+  }
+  awardDailyTaskMilestones(next);
   next.achievements = achievementsFor(next, programForState(next));
+  return next;
+}
+
+export function refreshMicroTasks(state) {
+  const next = structuredClone(ensureMicroTasks(state));
+  next.quickSetId += 1;
+  next.quickSetBonus = null;
+  next.microTasks = [];
+  while (next.microTasks.length < QUICK_TASK_COUNT) {
+    next.microTasks.push(drawMicroTask(next, next.quickSetId * 11 + next.microTasks.length));
+  }
+  next.lastUndo = null;
   return next;
 }
 
@@ -137,11 +187,16 @@ export function undoLastAction(state) {
   const undo = next.lastUndo;
   if (!undo) return next;
   if (undo.type === "micro") {
-    if (next.microTasks[undo.slotIndex]?.id !== undo.replacement.id) return next;
-    next.microTasks[undo.slotIndex] = undo.task;
+    const current = next.microTasks[undo.slotIndex];
+    if (next.quickSetId !== undo.quickSetId || current?.id !== undo.task.id || !current.completed) return next;
+    next.microTasks[undo.slotIndex] = { ...undo.task, completed: false, completedAt: null };
     const index = next.microTaskHistory.findIndex((entry) => entry.completedAt === undo.historyEntry.completedAt && entry.id === undo.historyEntry.id);
     if (index >= 0) next.microTaskHistory.splice(index, 1);
     awardXp(next, undo.skills, -undo.xp);
+    if (next.quickSetBonus?.quickSetId === next.quickSetId) {
+      awardXp(next, ["strength", "recovery"], -next.quickSetBonus.xp);
+      next.quickSetBonus = null;
+    }
     next.lastUndo = null;
     next.achievements = achievementsFor(next, programForState(next));
   }
@@ -295,6 +350,7 @@ export function completeTask(state, day, taskId) {
     };
   }
   awardTaskStreakBonus(next, programForState(next), day.dayNumber);
+  awardDailyTaskMilestones(next);
   next.achievements = achievementsFor(next, programForState(next));
   return next;
 }
@@ -325,6 +381,7 @@ export function stats(state, program) {
     completedCount: completed.length,
     completedTaskCount: completedTasks.length,
     microTasksDone,
+    dailyTasksDone: dailyTaskCount(state),
     completionRate: Math.round((completed.length / program.length) * 100),
     totalXp,
     totalLevel: Object.values(state.xp).reduce((sum, value) => sum + levelFromXp(value), 0),
@@ -392,9 +449,31 @@ function drawMicroTask(state, salt) {
   const recentIds = new Set((state.microTaskHistory || []).slice(0, 6).map((task) => task.id));
   const currentIds = new Set((state.microTasks || []).map((task) => task.id));
   const filtered = available.filter((task) => !recentIds.has(task.id) && !currentIds.has(task.id));
-  const pool = filtered.length ? filtered : available;
+  const pool = filtered.length ? filtered : available.filter((task) => !currentIds.has(task.id));
   const seed = Object.values(state.xp || {}).reduce((sum, value) => sum + value, 0) + salt * 17 + (state.microTaskHistory || []).length * 31;
-  return { ...pool[Math.abs(seed) % pool.length] };
+  return { ...pool[Math.abs(seed) % pool.length], completed: false, completedAt: null };
+}
+
+export function dailyTaskCount(state, date = todayIso()) {
+  const quickCount = (state.microTaskHistory || []).filter((task) => task.completedAt?.slice(0, 10) === date).length;
+  const plannedCount = Object.values(state.taskCompletions || {}).filter((completion) => completion?.date?.slice(0, 10) === date).length;
+  const directlyLoggedWorkouts = Object.entries(state.workouts || {}).filter(([dayNumber, workout]) => {
+    const completion = state.taskCompletions?.[`day-${dayNumber}:full-workout`];
+    return workout?.date?.slice(0, 10) === date && !completion?.date;
+  }).length;
+  return quickCount + plannedCount + directlyLoggedWorkouts;
+}
+
+function awardDailyTaskMilestones(state) {
+  const date = todayIso();
+  const count = dailyTaskCount(state, date);
+  state.dailyTaskRewards ||= {};
+  state.dailyTaskRewards[date] ||= {};
+  Object.entries(DAILY_TASK_MILESTONES).forEach(([milestone, xp]) => {
+    if (count < Number(milestone) || state.dailyTaskRewards[date][milestone]) return;
+    state.dailyTaskRewards[date][milestone] = { date: new Date().toISOString(), xp };
+    awardXp(state, ["athleticism", "recovery"], xp);
+  });
 }
 
 function unlockedTier(state) {
@@ -451,6 +530,10 @@ function achievementsFor(state, program) {
   if (s.completedTaskCount >= 10) current.add("First task board cleared");
   if (s.microTasksDone >= 10) current.add("10 quick tasks complete");
   if (s.microTasksDone >= 50) current.add("50 quick tasks complete");
+  Object.values(state.dailyTaskRewards || {}).forEach((rewards) => {
+    Object.keys(rewards || {}).forEach((milestone) => current.add(`${milestone}-task day`));
+  });
+  if (state.quickSetBonus) current.add("Quick five finisher");
   if (s.completedCount >= 7) current.add("Seven sessions complete");
   if (s.completedCount >= 28) current.add("Block finisher");
   if (s.streak >= 7) current.add("Seven-day streak");

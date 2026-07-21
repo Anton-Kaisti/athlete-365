@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
+import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
 
 const program = generateProgram("2026-07-19");
 const errors = validateProgram(program);
@@ -36,17 +36,35 @@ state = signOut(state);
 assert.equal(isSignedIn(state), false);
 state = signIn(state, "Anton");
 state = ensureMicroTasks(state);
-assert.equal(state.microTasks.length, 8);
+assert.equal(state.microTasks.length, 5);
+assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => task.tier === 1));
-assert.ok(state.microTasks.filter((task) => task.equipment.length === 0).length >= 6);
+assert.ok(state.microTasks.every((task) => task.equipment.length === 0));
 const firstQuickTask = state.microTasks[0].id;
 state = completeMicroTask(state, 0);
 assert.equal(state.microTaskHistory.length, 1);
-assert.notEqual(state.microTasks[0].id, firstQuickTask);
+assert.equal(state.microTasks[0].id, firstQuickTask);
+assert.equal(state.microTasks[0].completed, true);
 assert.ok(stats(state, program).microTasksDone >= 1);
 state = undoLastAction(state);
 assert.equal(state.microTaskHistory.length, 0);
 assert.equal(state.microTasks[0].id, firstQuickTask);
+assert.equal(state.microTasks[0].completed, false);
+
+for (let index = 0; index < 5; index += 1) state = completeMicroTask(state, index);
+assert.ok(state.microTasks.every((task) => task.completed));
+assert.equal(state.quickSetBonus.xp, QUICK_SET_BONUS_XP);
+const completedSetIds = state.microTasks.map((task) => task.id);
+state = refreshMicroTasks(state);
+assert.equal(state.microTasks.length, 5);
+assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
+assert.ok(state.microTasks.every((task) => !task.completed));
+assert.equal(state.quickSetBonus, null);
+assert.ok(state.microTasks.some((task) => !completedSetIds.includes(task.id)));
+for (let index = 0; index < 5; index += 1) state = completeMicroTask(state, index);
+const today = new Date().toISOString().slice(0, 10);
+assert.equal(state.dailyTaskRewards[today][10].xp, DAILY_TASK_MILESTONES[10]);
+assert.ok(state.achievements.includes("10-task day"));
 
 state = completeTask(state, program[0], "warmup");
 assert.ok(state.taskCompletions[taskKey(1, "warmup")]);
