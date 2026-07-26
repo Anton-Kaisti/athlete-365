@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
+import { exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
 import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
 
-const program = generateProgram("2026-07-19");
+const program = generateProgram(new Date().toISOString().slice(0, 10));
 const errors = validateProgram(program);
 
 assert.equal(program.length, 365);
@@ -17,6 +17,8 @@ assert.ok(levelFromXp(0) === 1);
 assert.ok(levelFromXp(2500) > 1);
 assert.ok(xpForExercise(program[0].exercises[0], { difficulty: 2, pain: 0, formGood: true }) > 0);
 assert.ok(xpForExercise(program[0].exercises[0], { difficulty: 3, pain: 6, formGood: true }) < xpForExercise(program[0].exercises[0], { difficulty: 3, pain: 0, formGood: true }));
+const alphabeticalExercises = exercisesAlphabetically().map((exercise) => exercise.name);
+assert.deepEqual(alphabeticalExercises, [...alphabeticalExercises].sort((a, b) => a.localeCompare(b)));
 
 const tasks = dailyTasksFor(program[0]);
 assert.equal(timerSecondsForTask({ title: "20-Second Plank", detail: "Hold it." }), 20);

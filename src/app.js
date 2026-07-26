@@ -1,4 +1,4 @@
-import { exerciseLibrary, levelFromXp, xpForLevel, validateProgram } from "./program.js";
+import { exerciseLibrary, exercisesAlphabetically, levelFromXp, xpForLevel, validateProgram } from "./program.js";
 import {
   DAILY_TASK_MILESTONES,
   QUICK_SET_BONUS_XP,
@@ -33,6 +33,9 @@ let selectedDay = currentProgramDay();
 const taskTimers = new Map();
 let timerTicker = null;
 let audioContext = null;
+let timerSoundAudio = null;
+let timerAudioKeepAlive = null;
+let libraryFocus = null;
 
 const app = document.querySelector("#app");
 const celebrationLayer = document.createElement("div");
@@ -48,7 +51,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260721-12", { updateViaCache: "none" })
+    .register("./sw.js?v=20260726-13", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -198,7 +201,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260721-12</p>
+            <p>Build 20260726-13</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -210,15 +213,15 @@ function tasksView() {
 function microTaskCard(task, index) {
   const timerKey = `micro:${task.id}`;
   return `
-    <article class="task-card micro tier-${task.tier} task-card-informative ${task.completed ? "done" : ""}" data-task-info="micro:${index}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
+    <article class="task-card micro tier-${task.tier} ${task.completed ? "done" : ""}">
       <button type="button" class="task-check" data-micro-task="${index}" aria-label="${task.completed ? "Completed" : "Complete"} ${task.title}" ${task.completed ? "disabled" : ""}>${task.completed ? "✓" : "+"}</button>
       <div>
         <p class="eyebrow">Tier ${task.tier} - ${task.skills.join(" + ")}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
-        <small>${task.completed ? "Completed - stays in this set" : `${task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"} - Tap for instructions`}</small>
+        <small>${task.completed ? "Completed - stays in this set" : task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"}</small>
       </div>
-      ${taskCardAside(task, timerKey)}
+      ${taskCardAside(task, timerKey, `micro:${index}`)}
     </article>
   `;
 }
@@ -237,7 +240,7 @@ function taskCard(task, day) {
   const done = state.taskCompletions[taskKey(day.dayNumber, task.id)];
   const timerKey = `planned:${day.dayNumber}:${task.id}`;
   return `
-    <article class="task-card task-card-informative ${task.featured ? "featured" : ""} ${done ? "done" : ""}" data-task-info="planned:${task.id}" tabindex="0" role="button" aria-label="View instructions for ${task.title}">
+    <article class="task-card ${task.featured ? "featured" : ""} ${done ? "done" : ""}">
       <button type="button" class="task-check ${done ? "undo-check" : ""}" data-task="${task.id}" aria-label="${done ? "Undo" : "Complete"} ${task.title}">
         ${done ? "Undo" : "+"}
       </button>
@@ -245,16 +248,17 @@ function taskCard(task, day) {
         <p class="eyebrow">${task.featured ? "Big reward task" : task.skills.join(" + ")}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
-        <small>Tap for instructions</small>
+        <small>Press Info for instructions${findLibraryExercise(task) ? " and the library entry" : ""}</small>
       </div>
-      ${taskCardAside(task, timerKey)}
+      ${taskCardAside(task, timerKey, `planned:${task.id}`)}
     </article>
   `;
 }
 
-function taskCardAside(task, timerKey) {
+function taskCardAside(task, timerKey, infoKey) {
   const duration = timerSecondsForTask(task);
-  if (!duration) return `<strong>${task.xp} XP</strong>`;
+  const infoButton = `<button type="button" class="task-info-button" data-task-info="${infoKey}" aria-label="Information about ${task.title}">Info</button>`;
+  if (!duration) return `<div class="task-card-aside"><strong>${task.xp} XP</strong>${infoButton}</div>`;
   const timer = timerSnapshot(timerKey, duration);
   return `
     <div class="task-card-aside">
@@ -266,6 +270,7 @@ function taskCardAside(task, timerKey) {
           <button type="button" class="timer-reset" data-timer-reset="${timerKey}" data-timer-duration="${duration}" aria-label="Reset timer">Reset</button>
         </div>
       </div>
+      ${infoButton}
     </div>
   `;
 }
@@ -308,6 +313,7 @@ function updateTimerDisplays() {
   if (![...taskTimers.values()].some((timer) => timer.running) && timerTicker) {
     clearInterval(timerTicker);
     timerTicker = null;
+    stopTimerAudioKeepAlive();
   }
 }
 
@@ -323,7 +329,49 @@ function unlockAudio() {
   return audioContext;
 }
 
+function startTimerAudioSession() {
+  const context = unlockAudio();
+  if (context && !timerAudioKeepAlive) {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = 20;
+    gain.gain.value = 0.00001;
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    timerAudioKeepAlive = { oscillator, gain };
+  }
+  timerSoundAudio ||= new Audio(createTimerChimeUrl());
+  timerSoundAudio.preload = "auto";
+  timerSoundAudio.volume = 0.001;
+  timerSoundAudio.currentTime = 0;
+  const unlockAttempt = timerSoundAudio.play();
+  window.setTimeout(() => {
+    timerSoundAudio?.pause();
+    if (timerSoundAudio) {
+      timerSoundAudio.currentTime = 0;
+      timerSoundAudio.volume = 1;
+    }
+  }, 80);
+  unlockAttempt?.catch(() => {});
+}
+
+function stopTimerAudioKeepAlive() {
+  if (!timerAudioKeepAlive) return;
+  timerAudioKeepAlive.oscillator.stop();
+  timerAudioKeepAlive.oscillator.disconnect();
+  timerAudioKeepAlive.gain.disconnect();
+  timerAudioKeepAlive = null;
+}
+
 function playTimerFinishedSound() {
+  timerSoundAudio ||= new Audio(createTimerChimeUrl());
+  timerSoundAudio.volume = 1;
+  timerSoundAudio.currentTime = 0;
+  const playback = timerSoundAudio.play();
+  playback?.catch(() => playWebAudioChime());
+}
+
+function playWebAudioChime() {
   const context = unlockAudio();
   if (!context) return;
   const start = context.currentTime;
@@ -340,6 +388,40 @@ function playTimerFinishedSound() {
     oscillator.start(noteStart);
     oscillator.stop(noteStart + 0.3);
   });
+}
+
+function createTimerChimeUrl() {
+  const sampleRate = 44100;
+  const duration = 1.05;
+  const sampleCount = Math.floor(sampleRate * duration);
+  const buffer = new ArrayBuffer(44 + sampleCount * 2);
+  const view = new DataView(buffer);
+  const writeText = (offset, value) => [...value].forEach((character, index) => view.setUint8(offset + index, character.charCodeAt(0)));
+  writeText(0, "RIFF");
+  view.setUint32(4, 36 + sampleCount * 2, true);
+  writeText(8, "WAVEfmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeText(36, "data");
+  view.setUint32(40, sampleCount * 2, true);
+  const notes = [[0.2, 659.25], [0.43, 783.99], [0.66, 987.77]];
+  for (let sample = 0; sample < sampleCount; sample += 1) {
+    const time = sample / sampleRate;
+    let value = 0;
+    notes.forEach(([noteStart, frequency]) => {
+      const noteTime = time - noteStart;
+      if (noteTime < 0 || noteTime > 0.22) return;
+      const envelope = Math.min(1, noteTime / 0.015) * Math.max(0, 1 - noteTime / 0.22);
+      value += Math.sin(2 * Math.PI * frequency * noteTime) * envelope * 0.34;
+    });
+    view.setInt16(44 + sample * 2, Math.max(-1, Math.min(1, value)) * 32767, true);
+  }
+  return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
 }
 
 function dashboardView() {
@@ -530,10 +612,16 @@ function progressView() {
 }
 
 function libraryView() {
+  const exercises = exercisesAlphabetically();
   return `
     <section class="page-grid">
-      ${Object.values(exerciseLibrary).map((exercise) => `
-        <article class="card">
+      <article class="card span library-heading">
+        <p class="eyebrow">A-Z reference</p>
+        <h2>Exercise library</h2>
+        <p>${exercises.length} exercises sorted alphabetically.</p>
+      </article>
+      ${exercises.map((exercise) => `
+        <article class="card library-exercise ${libraryFocus === exercise.name ? "library-focus" : ""}" data-library-exercise="${exercise.name}" tabindex="-1">
           <p class="eyebrow">${exercise.category}</p>
           <h3>${exercise.name}</h3>
           <p>${exercise.description}</p>
@@ -616,10 +704,11 @@ function bindEvents() {
   });
   app.querySelectorAll("[data-route]").forEach((button) => button.addEventListener("click", () => {
     route = button.dataset.route;
+    if (route === "library") libraryFocus = null;
     render();
   }));
   app.querySelectorAll("[data-timer-toggle]").forEach((button) => button.addEventListener("click", () => {
-    unlockAudio();
+    startTimerAudioSession();
     const key = button.dataset.timerToggle;
     const timer = timerSnapshot(key, Number(button.dataset.timerDuration));
     if (timer.running) {
@@ -640,18 +729,13 @@ function bindEvents() {
     updateTimerDisplays();
   }));
   app.querySelectorAll("[data-task-info]").forEach((card) => {
-    const openGuide = (event) => {
-      if (event.target.closest("button")) return;
-      if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
+    card.addEventListener("click", () => {
       const [source, identifier] = card.dataset.taskInfo.split(":");
       const task = source === "micro"
         ? state.microTasks[Number(identifier)]
         : dailyTasksFor(withSubstitutions(program[selectedDay - 1])).find((item) => item.id === identifier);
       if (task) showTaskInfo(task);
-    };
-    card.addEventListener("click", openGuide);
-    card.addEventListener("keydown", openGuide);
+    });
   });
   app.querySelectorAll("[data-set]").forEach((button) => button.addEventListener("click", () => {
     const [dayNumber, exerciseIndex, setIndex] = button.dataset.set.split(":").map(Number);
@@ -661,13 +745,16 @@ function bindEvents() {
   }));
   app.querySelectorAll("[data-micro-task]").forEach((button) => button.addEventListener("click", () => {
     const task = state.microTasks[Number(button.dataset.microTask)];
+    const alreadyEarnedSetBonus = state.quickSetBonus?.quickSetId === state.quickSetId;
     const beforeSkillLevels = skillLevelsFor(state);
     celebrateTask(button, task?.xp || 0);
     state = completeMicroTask(state, Number(button.dataset.microTask));
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
-    if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
+    const earnedSetBonus = !alreadyEarnedSetBonus && state.quickSetBonus?.quickSetId === state.quickSetId;
+    if (earnedSetBonus) showQuickSetCompletePopup(skillChanges);
+    else if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   }));
   app.querySelector("[data-refresh-micro]")?.addEventListener("click", () => {
     const completed = state.microTasks.filter((task) => task.completed).length;
@@ -839,8 +926,26 @@ function guide(name, pattern, setup, steps, easier) {
   return { name, pattern, setup, steps, easier };
 }
 
+function findLibraryExercise(task) {
+  if (task?.exercise?.name && exerciseLibrary[task.exercise.name]) return exerciseLibrary[task.exercise.name];
+  const tokensFor = (value) => new Set(
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) => word.endsWith("s") && word.length > 3 ? word.slice(0, -1) : word)
+  );
+  const taskTokens = tokensFor(`${task?.title || ""} ${task?.detail || ""}`);
+  return Object.values(exerciseLibrary)
+    .sort((a, b) => b.name.length - a.name.length)
+    .find((exercise) => [...tokensFor(exercise.name)].every((token) => taskTokens.has(token))) || null;
+}
+
 function showTaskInfo(task) {
   document.querySelector(".task-info-layer")?.remove();
+  const libraryExercise = findLibraryExercise(task);
   const guides = task.exercise
     ? [{
         name: task.exercise.name,
@@ -882,6 +987,11 @@ function showTaskInfo(task) {
           </section>
         `).join("")}
       </div>
+      <div class="task-info-actions">
+        <button type="button" class="primary" data-open-library="${libraryExercise?.name || ""}">
+          ${libraryExercise ? `Open ${libraryExercise.name} in library` : "Browse exercise library"}
+        </button>
+      </div>
       <p class="task-safety-note">Stop if the movement causes sharp or worsening pain.</p>
     </article>
   `;
@@ -894,6 +1004,19 @@ function showTaskInfo(task) {
     if (event.key === "Escape") close();
   };
   layer.querySelector(".task-info-close").addEventListener("click", close);
+  layer.querySelector("[data-open-library]").addEventListener("click", (event) => {
+    libraryFocus = event.currentTarget.dataset.openLibrary || null;
+    close();
+    route = "library";
+    render();
+    if (libraryFocus) {
+      window.requestAnimationFrame(() => {
+        const exercise = app.querySelector(`[data-library-exercise="${CSS.escape(libraryFocus)}"]`);
+        exercise?.scrollIntoView({ behavior: "smooth", block: "center" });
+        exercise?.focus({ preventScroll: true });
+      });
+    }
+  });
   layer.addEventListener("click", (event) => {
     if (event.target === layer) close();
   });
@@ -932,6 +1055,45 @@ function celebrateTask(source, xp) {
     toast.remove();
     celebrationLayer.querySelectorAll(".burst-particle").forEach((particle) => particle.remove());
   }, 3300);
+}
+
+function showQuickSetCompletePopup(skillChanges = []) {
+  celebrationLayer.querySelector(".quick-set-complete-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "quick-set-complete-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-labelledby", "quick-set-complete-title");
+  overlay.innerHTML = `
+    <article class="quick-set-complete-card">
+      <span>5 / 5 complete</span>
+      <h2 id="quick-set-complete-title">Quick task set cleared!</h2>
+      <strong>+${QUICK_SET_BONUS_XP} XP</strong>
+      <p>You completed every quick task in the set and earned the full-set bonus.</p>
+      <div class="actions">
+        <button type="button" class="primary" data-quick-set-new>Start a new set</button>
+        <button type="button" data-quick-set-keep>Keep completed tasks</button>
+      </div>
+    </article>
+  `;
+  celebrationLayer.append(overlay);
+  const finish = (startNewSet) => {
+    overlay.remove();
+    document.removeEventListener("keydown", dismissWithEscape);
+    if (startNewSet) {
+      state = refreshMicroTasks(state);
+      saveState(state);
+      render();
+    }
+    if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
+  };
+  const dismissWithEscape = (event) => {
+    if (event.key === "Escape") finish(false);
+  };
+  overlay.querySelector("[data-quick-set-new]").addEventListener("click", () => finish(true));
+  overlay.querySelector("[data-quick-set-keep]").addEventListener("click", () => finish(false));
+  document.addEventListener("keydown", dismissWithEscape);
+  overlay.querySelector("[data-quick-set-new]").focus();
 }
 
 function skillLevelsFor(currentState) {

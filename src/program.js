@@ -35,6 +35,10 @@ export const exerciseLibrary = {
   "Walking": item("Walking", "recovery", [], "Keep it easy enough to nasal breathe.", "Short walk", "Longer walk", ["Easy marching"])
 };
 
+export function exercisesAlphabetically() {
+  return Object.values(exerciseLibrary).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function generateProgram(startDate = todayIso()) {
   const days = [];
   for (let dayNumber = 1; dayNumber <= 365; dayNumber += 1) {
