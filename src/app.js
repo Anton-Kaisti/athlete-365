@@ -51,7 +51,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260726-13", { updateViaCache: "none" })
+    .register("./sw.js?v=20260726-14", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -201,7 +201,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260726-13</p>
+            <p>Build 20260726-14</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -625,6 +625,8 @@ function libraryView() {
           <p class="eyebrow">${exercise.category}</p>
           <h3>${exercise.name}</h3>
           <p>${exercise.description}</p>
+          <p><b>Setup:</b> ${exercise.setup}</p>
+          <ol>${exercise.steps.map((step) => `<li>${step}</li>`).join("")}</ol>
           <p><b>Cue:</b> ${exercise.cue}</p>
           <p><b>Common mistake:</b> ${exercise.mistakes}</p>
           <p><b>Regression:</b> ${exercise.regression}</p>
@@ -927,7 +929,18 @@ function guide(name, pattern, setup, steps, easier) {
 }
 
 function findLibraryExercise(task) {
-  if (task?.exercise?.name && exerciseLibrary[task.exercise.name]) return exerciseLibrary[task.exercise.name];
+  return libraryExercisesForTask(task)[0] || null;
+}
+
+function libraryExercisesForTask(task) {
+  const explicitNames = [
+    ...(task?.movements || []),
+    ...(task?.exercise?.name ? [task.exercise.name] : [])
+  ];
+  const explicit = [...new Set(explicitNames)]
+    .map((name) => exerciseLibrary[name])
+    .filter(Boolean);
+  if (explicit.length) return explicit;
   const tokensFor = (value) => new Set(
     String(value || "")
       .toLowerCase()
@@ -938,22 +951,23 @@ function findLibraryExercise(task) {
       .map((word) => word.endsWith("s") && word.length > 3 ? word.slice(0, -1) : word)
   );
   const taskTokens = tokensFor(`${task?.title || ""} ${task?.detail || ""}`);
-  return Object.values(exerciseLibrary)
+  const inferred = Object.values(exerciseLibrary)
     .sort((a, b) => b.name.length - a.name.length)
-    .find((exercise) => [...tokensFor(exercise.name)].every((token) => taskTokens.has(token))) || null;
+    .find((exercise) => [...tokensFor(exercise.name)].every((token) => taskTokens.has(token)));
+  return inferred ? [inferred] : [];
 }
 
 function showTaskInfo(task) {
   document.querySelector(".task-info-layer")?.remove();
-  const libraryExercise = findLibraryExercise(task);
-  const guides = task.exercise
-    ? [{
-        name: task.exercise.name,
-        setup: task.exercise.description || `Prepare for ${task.exercise.name}.`,
-        steps: [task.exercise.cue, `Complete ${task.detail} with controlled, pain-free reps.`],
-        easier: task.exercise.regression,
-        avoid: task.exercise.mistakes
-      }]
+  const libraryExercises = libraryExercisesForTask(task);
+  const guides = libraryExercises.length
+    ? libraryExercises.map((exercise) => ({
+        name: exercise.name,
+        setup: exercise.setup,
+        steps: exercise.steps,
+        easier: exercise.regression,
+        avoid: exercise.mistakes
+      }))
     : movementGuides.filter((item) => item.pattern.test(`${task.title} ${task.detail}`));
   const sections = guides.length ? guides : [{
     name: task.title,
@@ -988,9 +1002,13 @@ function showTaskInfo(task) {
         `).join("")}
       </div>
       <div class="task-info-actions">
-        <button type="button" class="primary" data-open-library="${libraryExercise?.name || ""}">
-          ${libraryExercise ? `Open ${libraryExercise.name} in library` : "Browse exercise library"}
-        </button>
+        ${libraryExercises.length
+          ? libraryExercises.map((exercise) => `
+              <button type="button" class="primary" data-open-library="${exercise.name}">
+                Open ${exercise.name} in library
+              </button>
+            `).join("")
+          : `<button type="button" class="primary" data-open-library="">Browse exercise library</button>`}
       </div>
       <p class="task-safety-note">Stop if the movement causes sharp or worsening pain.</p>
     </article>
@@ -1004,7 +1022,7 @@ function showTaskInfo(task) {
     if (event.key === "Escape") close();
   };
   layer.querySelector(".task-info-close").addEventListener("click", close);
-  layer.querySelector("[data-open-library]").addEventListener("click", (event) => {
+  layer.querySelectorAll("[data-open-library]").forEach((button) => button.addEventListener("click", (event) => {
     libraryFocus = event.currentTarget.dataset.openLibrary || null;
     close();
     route = "library";
@@ -1016,7 +1034,7 @@ function showTaskInfo(task) {
         exercise?.focus({ preventScroll: true });
       });
     }
-  });
+  }));
   layer.addEventListener("click", (event) => {
     if (event.target === layer) close();
   });

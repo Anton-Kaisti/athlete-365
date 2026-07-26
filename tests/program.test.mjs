@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
+import { exerciseLibrary, exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
+import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
 
 const program = generateProgram(new Date().toISOString().slice(0, 10));
 const errors = validateProgram(program);
@@ -19,6 +19,9 @@ assert.ok(xpForExercise(program[0].exercises[0], { difficulty: 2, pain: 0, formG
 assert.ok(xpForExercise(program[0].exercises[0], { difficulty: 3, pain: 6, formGood: true }) < xpForExercise(program[0].exercises[0], { difficulty: 3, pain: 0, formGood: true }));
 const alphabeticalExercises = exercisesAlphabetically().map((exercise) => exercise.name);
 assert.deepEqual(alphabeticalExercises, [...alphabeticalExercises].sort((a, b) => a.localeCompare(b)));
+assert.ok(microTaskPool.every((task) => task.movements.length > 0));
+assert.ok(microTaskPool.every((task) => task.movements.every((name) => exerciseLibrary[name])));
+assert.ok(microTaskPool.every((task) => task.movements.every((name) => exerciseLibrary[name].setup && exerciseLibrary[name].steps.length >= 2)));
 
 const tasks = dailyTasksFor(program[0]);
 assert.equal(timerSecondsForTask({ title: "20-Second Plank", detail: "Hold it." }), 20);
