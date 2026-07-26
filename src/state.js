@@ -73,49 +73,49 @@ export function programForState(state) {
 }
 
 export const microTaskPool = [
-  tierTask(1, "10 Push-Ups", "Complete 10 clean push-ups. Use an incline if needed.", 18, ["push", "strength"]),
-  tierTask(1, "10 Sit-Ups", "Complete 10 controlled sit-ups or crunches.", 14, ["core"]),
-  tierTask(1, "15 Squats", "Complete 15 bodyweight squats with full-foot pressure.", 16, ["legs"]),
-  tierTask(1, "20-Second Plank", "Hold a strong plank for 20 seconds.", 14, ["core"]),
-  tierTask(1, "10 Reverse Lunges", "Complete 5 reverse lunges per side.", 16, ["legs"]),
-  tierTask(1, "20 Calf Raises", "Complete 20 controlled calf raises.", 14, ["legs"]),
-  tierTask(1, "30-Second Mobility Reset", "Open hips, ankles, and shoulders for 30 seconds.", 10, ["mobility", "recovery"]),
-  tierTask(1, "10 Glute Bridges", "Complete 10 glute bridges with a pause at the top.", 12, ["legs", "core"]),
-  tierTask(1, "20 Mountain Climbers", "Complete 10 reps per side at a steady pace.", 15, ["core", "athleticism"]),
-  tierTask(1, "10 Scapular Push-Ups", "Move only your shoulder blades.", 12, ["push", "mobility"]),
-  tierTask(1, "8 Bird Dogs", "Complete 4 slow, balanced reps per side.", 12, ["core", "recovery"]),
-  tierTask(1, "12 Dead Bugs", "Complete 6 controlled reps per side.", 14, ["core"]),
-  tierTask(1, "20-Second Side Plank", "Hold 10 seconds per side with hips tall.", 14, ["core"]),
-  tierTask(1, "12 Wall Slides", "Keep ribs down and slide the arms smoothly.", 12, ["mobility", "recovery"]),
-  tierTask(1, "30-Second Single-Leg Balance", "Balance for 15 seconds per side near a support.", 10, ["athleticism", "recovery"]),
-  tierTask(1, "10 Good Mornings", "Hinge slowly with a long spine and soft knees.", 12, ["legs", "mobility"]),
-  tierTask(1, "20 Arm Circles", "Use 10 controlled circles in each direction.", 10, ["mobility", "recovery"]),
-  tierTask(1, "10 Incline Push-Ups", "Use a stable chair or counter and keep a straight body line.", 14, ["push", "strength"]),
-  tierTask(2, "3 Rounds: 8 Push-Ups + 12 Squats", "Move steadily and stop before form breaks.", 45, ["push", "legs", "strength"]),
-  tierTask(2, "2 Rounds: 20s Plank + 10 Sit-Ups", "Brace hard and keep reps controlled.", 36, ["core"]),
-  tierTask(2, "20 Split Squats", "Complete 10 reps per side.", 34, ["legs", "strength"]),
-  tierTask(2, "60-Second Mobility Flow", "Move through hips, t-spine, ankles, and shoulders.", 25, ["mobility", "recovery"]),
-  tierTask(2, "30 Low Pogo Jumps", "Bounce lightly and quietly through the ankles.", 35, ["athleticism", "legs"]),
-  tierTask(2, "3 Rounds: 10 Calf Raises + 10 Tibialis Raises", "Build lower-leg capacity.", 38, ["legs", "recovery"]),
-  tierTask(2, "Chair Step-Ups", "Complete 10 controlled step-ups per side.", 42, ["legs", "strength"], ["chair"]),
-  tierTask(2, "Bear Crawl Practice", "Crawl forward and backward for 60 seconds with quiet steps.", 32, ["core", "athleticism"]),
-  tierTask(2, "Band Pull-Aparts", "Complete 3 sets of 12 smooth reps.", 34, ["pull", "recovery"], ["resistance bands"]),
-  tierTask(2, "Jump Rope Rhythm", "Accumulate 3 minutes of relaxed skipping.", 40, ["athleticism", "recovery"], ["jump rope"]),
-  tierTask(2, "Wall Sit", "Accumulate 90 seconds with steady breathing.", 34, ["legs", "strength"]),
-  tierTask(3, "5-Minute Bodyweight Circuit", "Cycle push-ups, squats, sit-ups, and plank until time ends.", 80, ["strength", "core", "legs", "push"]),
-  tierTask(3, "4 Rounds: 6 Push-Ups + 8 Lunges", "Keep every rep clean.", 70, ["push", "legs", "strength"]),
-  tierTask(3, "90-Second Core Block", "Alternate hollow hold, side plank, and dead bug.", 62, ["core"]),
-  tierTask(3, "Skater Hop Practice", "Complete 3 x 6 controlled side-to-side hops.", 65, ["athleticism", "legs"]),
-  tierTask(3, "Pull-Up Bar Hang", "Accumulate 60 seconds of hanging.", 58, ["pull", "recovery"], ["pull-up bar"]),
-  tierTask(3, "Band Row Ladder", "Complete 8, 10, 12, and 14 controlled rows.", 68, ["pull", "strength"], ["resistance bands"]),
-  tierTask(3, "Jump Rope Intervals", "Complete 5 rounds of 30 seconds on and 30 seconds easy.", 72, ["athleticism", "recovery"], ["jump rope"]),
-  tierTask(3, "Single-Leg Strength Mix", "Complete 3 rounds of 6 step-ups and 6 split squats per side.", 74, ["legs", "strength"], ["chair"]),
-  tierTask(4, "10-Minute Density Block", "Rotate push-ups, squats, and core with perfect form.", 140, ["strength", "push", "legs", "core"]),
-  tierTask(4, "Advanced Leg Control", "3 rounds of split squats, calf raises, and skater holds.", 120, ["legs", "athleticism"]),
-  tierTask(4, "Ring Row Mini-Workout", "4 x 8 ring rows with 60 seconds rest.", 110, ["pull", "strength"], ["rings"]),
-  tierTask(4, "Explosive Push-Up Practice", "5 x 3 fast push-ups with soft landings.", 105, ["push", "athleticism"]),
-  tierTask(4, "Pull and Core Complex", "Complete 5 rounds of ring rows and hollow holds.", 125, ["pull", "core", "strength"], ["rings"]),
-  tierTask(4, "Athletic Jump Rope Test", "Complete 10 rounds of 40 seconds fast and 20 seconds easy.", 135, ["athleticism", "recovery"], ["jump rope"])
+  tierTask(1, "10 Push-Ups", "Complete 10 clean push-ups. Use an incline if needed.", 18, ["push", "strength"], [], ["Push-Up"]),
+  tierTask(1, "10 Sit-Ups", "Complete 10 controlled sit-ups or crunches.", 14, ["core"], [], ["Sit-Up"]),
+  tierTask(1, "15 Squats", "Complete 15 bodyweight squats with full-foot pressure.", 16, ["legs"], [], ["Squat"]),
+  tierTask(1, "20-Second Plank", "Hold a strong plank for 20 seconds.", 14, ["core"], [], ["Plank"]),
+  tierTask(1, "10 Reverse Lunges", "Complete 5 reverse lunges per side.", 16, ["legs"], [], ["Reverse Lunge"]),
+  tierTask(1, "20 Calf Raises", "Complete 20 controlled calf raises.", 14, ["legs"], [], ["Calf Raise"]),
+  tierTask(1, "30-Second Mobility Reset", "Open hips, ankles, and shoulders for 30 seconds.", 10, ["mobility", "recovery"], [], ["Mobility Flow"]),
+  tierTask(1, "10 Glute Bridges", "Complete 10 glute bridges with a pause at the top.", 12, ["legs", "core"], [], ["Glute Bridge"]),
+  tierTask(1, "20 Mountain Climbers", "Complete 10 reps per side at a steady pace.", 15, ["core", "athleticism"], [], ["Mountain Climber"]),
+  tierTask(1, "10 Scapular Push-Ups", "Move only your shoulder blades.", 12, ["push", "mobility"], [], ["Scapular Push-Up"]),
+  tierTask(1, "8 Bird Dogs", "Complete 4 slow, balanced reps per side.", 12, ["core", "recovery"], [], ["Bird Dog"]),
+  tierTask(1, "12 Dead Bugs", "Complete 6 controlled reps per side.", 14, ["core"], [], ["Dead Bug"]),
+  tierTask(1, "20-Second Side Plank", "Hold 10 seconds per side with hips tall.", 14, ["core"], [], ["Side Plank"]),
+  tierTask(1, "12 Wall Slides", "Keep ribs down and slide the arms smoothly.", 12, ["mobility", "recovery"], [], ["Wall Slide"]),
+  tierTask(1, "30-Second Single-Leg Balance", "Balance for 15 seconds per side near a support.", 10, ["athleticism", "recovery"], [], ["Single-Leg Balance"]),
+  tierTask(1, "10 Good Mornings", "Hinge slowly with a long spine and soft knees.", 12, ["legs", "mobility"], [], ["Good Morning"]),
+  tierTask(1, "20 Arm Circles", "Use 10 controlled circles in each direction.", 10, ["mobility", "recovery"], [], ["Arm Circle"]),
+  tierTask(1, "10 Incline Push-Ups", "Use a stable chair or counter and keep a straight body line.", 14, ["push", "strength"], [], ["Incline Push-Up"]),
+  tierTask(2, "3 Rounds: 8 Push-Ups + 12 Squats", "Move steadily and stop before form breaks.", 45, ["push", "legs", "strength"], [], ["Push-Up", "Squat"]),
+  tierTask(2, "2 Rounds: 20s Plank + 10 Sit-Ups", "Brace hard and keep reps controlled.", 36, ["core"], [], ["Plank", "Sit-Up"]),
+  tierTask(2, "20 Split Squats", "Complete 10 reps per side.", 34, ["legs", "strength"], [], ["Split Squat"]),
+  tierTask(2, "60-Second Mobility Flow", "Move through hips, t-spine, ankles, and shoulders.", 25, ["mobility", "recovery"], [], ["Mobility Flow"]),
+  tierTask(2, "30 Low Pogo Jumps", "Bounce lightly and quietly through the ankles.", 35, ["athleticism", "legs"], [], ["Pogo Jump"]),
+  tierTask(2, "3 Rounds: 10 Calf Raises + 10 Tibialis Raises", "Build lower-leg capacity.", 38, ["legs", "recovery"], [], ["Calf Raise", "Tibialis Raise"]),
+  tierTask(2, "Chair Step-Ups", "Complete 10 controlled step-ups per side.", 42, ["legs", "strength"], ["chair"], ["Step-Up"]),
+  tierTask(2, "Bear Crawl Practice", "Crawl forward and backward for 60 seconds with quiet steps.", 32, ["core", "athleticism"], [], ["Bear Crawl"]),
+  tierTask(2, "Band Pull-Aparts", "Complete 3 sets of 12 smooth reps.", 34, ["pull", "recovery"], ["resistance bands"], ["Band Pull-Apart"]),
+  tierTask(2, "Jump Rope Rhythm", "Accumulate 3 minutes of relaxed skipping.", 40, ["athleticism", "recovery"], ["jump rope"], ["Jump Rope"]),
+  tierTask(2, "Wall Sit", "Accumulate 90 seconds with steady breathing.", 34, ["legs", "strength"], [], ["Wall Sit"]),
+  tierTask(3, "5-Minute Bodyweight Circuit", "Cycle push-ups, squats, sit-ups, and plank until time ends.", 80, ["strength", "core", "legs", "push"], [], ["Push-Up", "Squat", "Sit-Up", "Plank"]),
+  tierTask(3, "4 Rounds: 6 Push-Ups + 8 Lunges", "Keep every rep clean.", 70, ["push", "legs", "strength"], [], ["Push-Up", "Reverse Lunge"]),
+  tierTask(3, "90-Second Core Block", "Alternate hollow hold, side plank, and dead bug.", 62, ["core"], [], ["Hollow Hold", "Side Plank", "Dead Bug"]),
+  tierTask(3, "Skater Hop Practice", "Complete 3 x 6 controlled side-to-side hops.", 65, ["athleticism", "legs"], [], ["Skater Hop"]),
+  tierTask(3, "Pull-Up Bar Hang", "Accumulate 60 seconds of hanging.", 58, ["pull", "recovery"], ["pull-up bar"], ["Dead Hang"]),
+  tierTask(3, "Band Row Ladder", "Complete 8, 10, 12, and 14 controlled rows.", 68, ["pull", "strength"], ["resistance bands"], ["Band Row"]),
+  tierTask(3, "Jump Rope Intervals", "Complete 5 rounds of 30 seconds on and 30 seconds easy.", 72, ["athleticism", "recovery"], ["jump rope"], ["Jump Rope"]),
+  tierTask(3, "Single-Leg Strength Mix", "Complete 3 rounds of 6 step-ups and 6 split squats per side.", 74, ["legs", "strength"], ["chair"], ["Step-Up", "Split Squat"]),
+  tierTask(4, "10-Minute Density Block", "Rotate push-ups, squats, and core with perfect form.", 140, ["strength", "push", "legs", "core"], [], ["Push-Up", "Squat", "Plank"]),
+  tierTask(4, "Advanced Leg Control", "3 rounds of split squats, calf raises, and skater holds.", 120, ["legs", "athleticism"], [], ["Split Squat", "Calf Raise", "Skater Hop"]),
+  tierTask(4, "Ring Row Mini-Workout", "4 x 8 ring rows with 60 seconds rest.", 110, ["pull", "strength"], ["rings"], ["Ring Row"]),
+  tierTask(4, "Explosive Push-Up Practice", "5 x 3 fast push-ups with soft landings.", 105, ["push", "athleticism"], [], ["Plyo Push-Up"]),
+  tierTask(4, "Pull and Core Complex", "Complete 5 rounds of ring rows and hollow holds.", 125, ["pull", "core", "strength"], ["rings"], ["Ring Row", "Hollow Hold"]),
+  tierTask(4, "Athletic Jump Rope Test", "Complete 10 rounds of 40 seconds fast and 20 seconds easy.", 135, ["athleticism", "recovery"], ["jump rope"], ["Jump Rope"])
 ];
 
 export function ensureMicroTasks(state) {
@@ -129,7 +129,10 @@ export function ensureMicroTasks(state) {
   next.microTasks = (Array.isArray(next.microTasks) ? next.microTasks : [])
     .filter((task) => task?.id && !seen.has(task.id) && seen.add(task.id))
     .slice(0, QUICK_TASK_COUNT)
-    .map((task) => ({ ...task, completed: Boolean(task.completed), completedAt: task.completedAt || null }));
+    .map((task) => {
+      const currentDefinition = microTaskPool.find((candidate) => candidate.id === task.id);
+      return { ...task, ...currentDefinition, completed: Boolean(task.completed), completedAt: task.completedAt || null };
+    });
   while (next.microTasks.length < QUICK_TASK_COUNT) {
     next.microTasks.push(drawMicroTask(next, next.microTasks.length));
   }
@@ -440,8 +443,8 @@ function awardXp(state, skills, xp) {
   });
 }
 
-function tierTask(tier, title, detail, xp, skills, equipment = []) {
-  return { id: slug(title), tier, title, detail, xp, skills, equipment };
+function tierTask(tier, title, detail, xp, skills, equipment = [], movements = []) {
+  return { id: slug(title), tier, title, detail, xp, skills, equipment, movements };
 }
 
 function drawMicroTask(state, salt) {
