@@ -360,20 +360,6 @@ dd {
   border-color: color-mix(in srgb, var(--ok) 70%, var(--line));
 }
 
-.task-card-informative {
-  cursor: pointer;
-}
-
-.task-card-informative:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-}
-
-.task-card-informative:hover h3,
-.task-card-informative:focus-visible h3 {
-  color: var(--brand);
-}
-
 .task-card h3,
 .task-card p {
   margin-bottom: 0.15rem;
@@ -393,6 +379,14 @@ dd {
 .task-card-aside > strong {
   color: var(--brand);
   white-space: nowrap;
+}
+
+.task-info-button {
+  min-width: 64px;
+  min-height: 34px;
+  padding: 0.35rem 0.65rem;
+  border-color: var(--brand-2);
+  color: var(--brand-2);
 }
 
 .task-timer {
@@ -754,12 +748,83 @@ summary {
   font-weight: 700;
 }
 
+.task-info-actions {
+  display: flex;
+  margin-top: 1rem;
+}
+
+.library-heading p:last-child {
+  margin-bottom: 0;
+}
+
+.library-exercise {
+  scroll-margin-top: 1rem;
+}
+
+.library-exercise.library-focus {
+  border-color: var(--brand-2);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-2) 18%, transparent);
+  animation: library-focus-in 900ms ease-out both;
+}
+
 .celebration-layer {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 999;
   overflow: hidden;
+}
+
+.quick-set-complete-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  pointer-events: auto;
+  background:
+    radial-gradient(circle at center, rgba(20, 184, 166, 0.28), transparent 48%),
+    rgba(5, 10, 18, 0.78);
+  animation: level-overlay-in 320ms ease-out both;
+}
+
+.quick-set-complete-card {
+  display: grid;
+  gap: 0.7rem;
+  justify-items: center;
+  width: min(100%, 460px);
+  padding: clamp(1.3rem, 5vw, 2rem);
+  border: 1px solid color-mix(in srgb, var(--brand) 75%, white);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #101827, #172033 58%, rgba(20, 184, 166, 0.2));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.52);
+  text-align: center;
+  animation: level-card-in 600ms cubic-bezier(0.2, 0.95, 0.18, 1) both;
+}
+
+.quick-set-complete-card > span {
+  color: var(--brand);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quick-set-complete-card h2,
+.quick-set-complete-card p {
+  margin-bottom: 0;
+}
+
+.quick-set-complete-card > strong {
+  color: var(--brand-2);
+  font-size: clamp(2.5rem, 13vw, 4.75rem);
+  line-height: 1;
+  text-shadow: 0 0 22px rgba(245, 158, 11, 0.6);
+}
+
+.quick-set-complete-card .actions {
+  justify-content: center;
+  margin-top: 0.3rem;
 }
 
 .celebration-flash {
@@ -998,9 +1063,17 @@ summary {
   .burst-particle,
   .level-up-overlay,
   .level-up-card,
-  .level-particle {
+  .level-particle,
+  .quick-set-complete-overlay,
+  .quick-set-complete-card,
+  .library-exercise.library-focus {
     animation-duration: 1ms;
   }
+}
+
+@keyframes library-focus-in {
+  from { transform: translateY(8px); background: color-mix(in srgb, var(--brand-2) 16%, var(--panel)); }
+  to { transform: translateY(0); background: var(--panel); }
 }
 
 @media (max-width: 1100px) {
