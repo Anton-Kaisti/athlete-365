@@ -22,7 +22,9 @@ export function initialState() {
     microTasks: [],
     microTaskHistory: [],
     quickSetId: 1,
+    quickTaskDate: startDate,
     quickSetBonus: null,
+    activeProgramDay: 1,
     dailyTaskRewards: {},
     lastUndo: null,
     taskCompletions: {},
@@ -120,7 +122,18 @@ export const microTaskPool = [
 
 export function ensureMicroTasks(state) {
   const next = { ...state };
+  const today = todayIso();
   next.quickSetId = Number(next.quickSetId) || 1;
+  // A quick-task set belongs to one calendar day. Existing saves without this
+  // field are treated as today's set so updating the app does not erase it.
+  next.quickTaskDate = next.quickTaskDate || today;
+  if (next.quickTaskDate !== today) {
+    next.quickSetId += 1;
+    next.quickTaskDate = today;
+    next.quickSetBonus = null;
+    next.microTasks = [];
+    next.lastUndo = null;
+  }
   next.quickSetBonus = next.quickSetBonus || null;
   next.dailyTaskRewards = next.dailyTaskRewards && typeof next.dailyTaskRewards === "object" ? { ...next.dailyTaskRewards } : {};
   next.microTaskHistory = Array.isArray(next.microTaskHistory) ? [...next.microTaskHistory] : [];
@@ -176,6 +189,7 @@ export function completeMicroTask(state, slotIndex) {
 export function refreshMicroTasks(state) {
   const next = structuredClone(ensureMicroTasks(state));
   next.quickSetId += 1;
+  next.quickTaskDate = todayIso();
   next.quickSetBonus = null;
   next.microTasks = [];
   while (next.microTasks.length < QUICK_TASK_COUNT) {
@@ -392,6 +406,14 @@ export function stats(state, program) {
     taskStreak: taskStreak(state, program),
     minutes: completed.length * 25
   };
+}
+
+export function nextIncompleteWorkoutDay(state, program, afterDayNumber = 0) {
+  const after = Number(afterDayNumber) || 0;
+  const orderedDays = after
+    ? [...program.filter((day) => day.dayNumber > after), ...program.filter((day) => day.dayNumber <= after)]
+    : program;
+  return orderedDays.find((day) => !state.workouts?.[String(day.dayNumber)]?.completed)?.dayNumber || program.at(-1)?.dayNumber || 1;
 }
 
 export function readinessAdvice(workout, readiness) {

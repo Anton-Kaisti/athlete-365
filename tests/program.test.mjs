@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { exerciseLibrary, exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
+import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
 
 const program = generateProgram(new Date().toISOString().slice(0, 10));
+const today = new Date().toISOString().slice(0, 10);
 const errors = validateProgram(program);
 
 assert.equal(program.length, 365);
@@ -66,8 +67,12 @@ assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => !task.completed));
 assert.equal(state.quickSetBonus, null);
 assert.ok(state.microTasks.some((task) => !completedSetIds.includes(task.id)));
+state.quickTaskDate = "2000-01-01";
+state.microTasks[0].completed = true;
+state = ensureMicroTasks(state);
+assert.equal(state.quickTaskDate, today);
+assert.ok(state.microTasks.every((task) => !task.completed));
 for (let index = 0; index < 5; index += 1) state = completeMicroTask(state, index);
-const today = new Date().toISOString().slice(0, 10);
 assert.equal(state.dailyTaskRewards[today][10].xp, DAILY_TASK_MILESTONES[10]);
 assert.ok(state.achievements.includes("10-task day"));
 
@@ -86,5 +91,15 @@ for (const day of program.slice(0, 3)) {
 assert.equal(taskProgress(state, program[2]).completed, 10);
 assert.equal(stats(state, program).taskStreak, 3);
 assert.ok(state.streakBonuses["tasks-3"]);
+
+let queueState = initialState();
+queueState.workouts = { 3: { completed: true }, 5: { completed: true }, 7: { completed: true } };
+assert.equal(nextIncompleteWorkoutDay(queueState, program), 1);
+queueState.workouts[1] = { completed: true };
+assert.equal(nextIncompleteWorkoutDay(queueState, program), 2);
+queueState.workouts[2] = { completed: true };
+assert.equal(nextIncompleteWorkoutDay(queueState, program), 4);
+queueState.workouts[8] = { completed: true };
+assert.equal(nextIncompleteWorkoutDay(queueState, program, 8), 9);
 
 console.log("Athlete 365 program tests passed.");

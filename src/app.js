@@ -10,6 +10,7 @@ import {
   exportJson,
   isSignedIn,
   loadState,
+  nextIncompleteWorkoutDay,
   programForState,
   readinessAdvice,
   refreshMicroTasks,
@@ -134,7 +135,7 @@ function tasksView() {
           <div>
             <p class="eyebrow">Quick task queue</p>
             <h2>${state.profile.name}'s quick tasks</h2>
-            <p>Complete all five for ${QUICK_SET_BONUS_XP} bonus XP. Finished tasks stay here until you refresh the set.</p>
+            <p>Complete all five for ${QUICK_SET_BONUS_XP} bonus XP. A fresh set starts immediately after you finish one.</p>
           </div>
           <strong class="level-badge">${quickCompleted}/5</strong>
         </div>
@@ -144,7 +145,6 @@ function tasksView() {
             <div class="bar"><span style="width:${quickCompleted * 20}%"></span></div>
             <small>${state.quickSetBonus?.quickSetId === state.quickSetId ? `${QUICK_SET_BONUS_XP} bonus XP earned` : `${5 - quickCompleted} left for the bonus`}</small>
           </div>
-          <button type="button" data-refresh-micro>${quickCompleted === 5 ? "New set" : "Refresh tasks"}</button>
         </div>
         <div class="micro-task-list">
           ${state.microTasks.map((task, index) => microTaskCard(task, index)).join("")}
@@ -201,7 +201,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260726-14</p>
+            <p>Build 20260731-16</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -219,7 +219,7 @@ function microTaskCard(task, index) {
         <p class="eyebrow">Tier ${task.tier} - ${task.skills.join(" + ")}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
-        <small>${task.completed ? "Completed - stays in this set" : task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"}</small>
+        <small>${task.completed ? "Completed today" : task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"}</small>
       </div>
       ${taskCardAside(task, timerKey, `micro:${index}`)}
     </article>
@@ -752,19 +752,13 @@ function bindEvents() {
     celebrateTask(button, task?.xp || 0);
     state = completeMicroTask(state, Number(button.dataset.microTask));
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
+    const earnedSetBonus = !alreadyEarnedSetBonus && state.quickSetBonus?.quickSetId === state.quickSetId;
+    if (earnedSetBonus) state = refreshMicroTasks(state);
     saveState(state);
     render();
-    const earnedSetBonus = !alreadyEarnedSetBonus && state.quickSetBonus?.quickSetId === state.quickSetId;
     if (earnedSetBonus) showQuickSetCompletePopup(skillChanges);
     else if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   }));
-  app.querySelector("[data-refresh-micro]")?.addEventListener("click", () => {
-    const completed = state.microTasks.filter((task) => task.completed).length;
-    if (completed > 0 && completed < state.microTasks.length && !confirm(`Refresh now? Your ${completed}/5 progress will be cleared and the ${QUICK_SET_BONUS_XP} XP set bonus will be forfeited.`)) return;
-    state = refreshMicroTasks(state);
-    saveState(state);
-    render();
-  });
   app.querySelector("[data-undo-last]")?.addEventListener("click", () => {
     state = undoLastAction(state);
     saveState(state);
@@ -777,6 +771,7 @@ function bindEvents() {
     const beforeSkillLevels = skillLevelsFor(state);
     if (!wasDone) celebrateTask(button, task?.xp || 0);
     state = completeTask(state, day, button.dataset.task);
+    if (!wasDone && state.workouts[String(day.dayNumber)]?.completed) selectedDay = advanceProgramDay(day.dayNumber);
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
@@ -786,6 +781,7 @@ function bindEvents() {
     event.preventDefault();
     const beforeSkillLevels = skillLevelsFor(state);
     state = completeWorkout(state, withSubstitutions(program[selectedDay - 1]), new FormData(event.currentTarget));
+    selectedDay = advanceProgramDay(selectedDay);
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
@@ -793,6 +789,8 @@ function bindEvents() {
   });
   app.querySelectorAll(".calendar-day").forEach((button) => button.addEventListener("click", () => {
     selectedDay = Number(button.dataset.day);
+    state.activeProgramDay = selectedDay;
+    saveState(state);
     route = "tasks";
     render();
   }));
@@ -862,10 +860,16 @@ function withSubstitutions(day) {
 }
 
 function currentProgramDay() {
-  const start = new Date(`${state.profile.startDate}T00:00:00`);
-  const today = new Date();
-  const diff = Math.floor((today - start) / 86400000) + 1;
-  return Math.max(1, Math.min(365, diff));
+  const activeDay = Number(state.activeProgramDay) || 1;
+  const activeWorkout = state.workouts[String(activeDay)];
+  if (!activeWorkout?.completed) return activeDay;
+  return advanceProgramDay(activeDay);
+}
+
+function advanceProgramDay(completedDay) {
+  const nextDay = nextIncompleteWorkoutDay(state, programForState(state), completedDay);
+  state.activeProgramDay = nextDay;
+  return nextDay;
 }
 
 function navButton(id, label) {
@@ -1087,31 +1091,24 @@ function showQuickSetCompletePopup(skillChanges = []) {
       <span>5 / 5 complete</span>
       <h2 id="quick-set-complete-title">Quick task set cleared!</h2>
       <strong>+${QUICK_SET_BONUS_XP} XP</strong>
-      <p>You completed every quick task in the set and earned the full-set bonus.</p>
+      <p>You completed every quick task and earned the full-set bonus. Your next set of five is ready now.</p>
       <div class="actions">
-        <button type="button" class="primary" data-quick-set-new>Start a new set</button>
-        <button type="button" data-quick-set-keep>Keep completed tasks</button>
+        <button type="button" class="primary" data-quick-set-keep>Continue</button>
       </div>
     </article>
   `;
   celebrationLayer.append(overlay);
-  const finish = (startNewSet) => {
+  const finish = () => {
     overlay.remove();
     document.removeEventListener("keydown", dismissWithEscape);
-    if (startNewSet) {
-      state = refreshMicroTasks(state);
-      saveState(state);
-      render();
-    }
     if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   };
   const dismissWithEscape = (event) => {
-    if (event.key === "Escape") finish(false);
+    if (event.key === "Escape") finish();
   };
-  overlay.querySelector("[data-quick-set-new]").addEventListener("click", () => finish(true));
-  overlay.querySelector("[data-quick-set-keep]").addEventListener("click", () => finish(false));
+  overlay.querySelector("[data-quick-set-keep]").addEventListener("click", finish);
   document.addEventListener("keydown", dismissWithEscape);
-  overlay.querySelector("[data-quick-set-new]").focus();
+  overlay.querySelector("[data-quick-set-keep]").focus();
 }
 
 function skillLevelsFor(currentState) {
