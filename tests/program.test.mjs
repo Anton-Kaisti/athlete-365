@@ -29,7 +29,7 @@ assert.equal(timerSecondsForTask({ title: "20-Second Plank", detail: "Hold it." 
 assert.equal(timerSecondsForTask({ title: "Mobility", detail: "Move for 5-10 minutes." }), 300);
 assert.equal(timerSecondsForTask({ title: "10 Push-Ups", detail: "Complete clean reps." }), null);
 assert.equal(timerSecondsForTask(tasks.find((task) => task.id === "full-workout")), program[0].duration * 60);
-assert.equal(tasks.length, 10);
+assert.equal(tasks.length, 9);
 assert.ok(tasks.some((task) => task.id === "full-workout"));
 assert.ok(tasks.find((task) => task.id === "full-workout").xp > tasks.find((task) => task.id === "warmup").xp);
 
@@ -88,7 +88,7 @@ for (const day of program.slice(0, 3)) {
     state = completeTask(state, day, task.id);
   }
 }
-assert.equal(taskProgress(state, program[2]).completed, 10);
+assert.equal(taskProgress(state, program[2]).completed, 9);
 assert.equal(stats(state, program).taskStreak, 3);
 assert.ok(state.streakBonuses["tasks-3"]);
 

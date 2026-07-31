@@ -201,7 +201,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260731-16</p>
+            <p>Build 20260731-17</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>

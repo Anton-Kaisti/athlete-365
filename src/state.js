@@ -261,13 +261,6 @@ export function completeWorkout(state, day, form) {
 export function dailyTasksFor(day) {
   const tasks = [
     {
-      id: "readiness",
-      title: "Log readiness",
-      detail: "Energy, sleep, soreness, joint discomfort",
-      xp: 15,
-      skills: ["recovery"]
-    },
-    {
       id: "warmup",
       title: "Complete warm-up",
       detail: day.warmup.slice(0, 2).join(" + "),
@@ -318,7 +311,7 @@ export function dailyTasksFor(day) {
     skills: day.type === "recovery" ? ["recovery", "mobility"] : ["strength", "athleticism"],
     featured: true
   });
-  return tasks.slice(0, 10);
+  return tasks.slice(0, 9);
 }
 
 export function timerSecondsForTask(task) {
