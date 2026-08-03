@@ -140,7 +140,10 @@ export function ensureMicroTasks(state) {
   if (next.lastUndo?.type === "micro" && !next.lastUndo.quickSetId) next.lastUndo = null;
   const seen = new Set();
   next.microTasks = (Array.isArray(next.microTasks) ? next.microTasks : [])
-    .filter((task) => task?.id && !seen.has(task.id) && seen.add(task.id))
+    .filter((task) => {
+      const definition = microTaskPool.find((candidate) => candidate.id === task?.id);
+      return definition && definition.equipment.length === 0 && !seen.has(task.id) && seen.add(task.id);
+    })
     .slice(0, QUICK_TASK_COUNT)
     .map((task) => {
       const currentDefinition = microTaskPool.find((candidate) => candidate.id === task.id);
@@ -254,6 +257,7 @@ export function completeWorkout(state, day, form) {
     notes: form.get("notes") || "",
     gained
   };
+  awardTaskStreakBonus(next, programForState(next), day.dayNumber);
   next.achievements = achievementsFor(next, programForState(next));
   return next;
 }
@@ -444,8 +448,9 @@ export function taskKey(dayNumber, taskId) {
 export function taskStreak(state, program) {
   let count = 0;
   for (const day of program) {
-    const progress = taskProgress(state, day);
-    if (progress.completed === progress.total) count += 1;
+    // A streak is earned by completing the planned workout, whether it was
+    // logged from the workout form or by checking its full-workout task.
+    if (state.workouts?.[String(day.dayNumber)]?.completed) count += 1;
     else if (new Date(day.date) < new Date(todayIso())) count = 0;
   }
   return count;
@@ -463,7 +468,8 @@ function tierTask(tier, title, detail, xp, skills, equipment = [], movements = [
 }
 
 function drawMicroTask(state, salt) {
-  const available = microTaskPool.filter((task) => task.tier <= unlockedTier(state) && task.equipment.every((item) => state.profile.equipment.includes(item)));
+  // Quick tasks must be possible anywhere, so they never require equipment.
+  const available = microTaskPool.filter((task) => task.tier <= unlockedTier(state) && task.equipment.length === 0);
   const recentIds = new Set((state.microTaskHistory || []).slice(0, 6).map((task) => task.id));
   const currentIds = new Set((state.microTasks || []).map((task) => task.id));
   const filtered = available.filter((task) => !recentIds.has(task.id) && !currentIds.has(task.id));
@@ -508,9 +514,7 @@ function slug(value) {
 
 function awardTaskStreakBonus(state, program, dayNumber) {
   const day = program[dayNumber - 1];
-  if (!day) return;
-  const progress = taskProgress(state, day);
-  if (progress.completed !== progress.total) return;
+  if (!day || !state.workouts?.[String(dayNumber)]?.completed) return;
   const streakNow = taskStreak(state, program);
   const bonuses = { 3: 75, 7: 200, 14: 450, 30: 1200, 60: 2600, 100: 5000 };
   const bonus = bonuses[streakNow];

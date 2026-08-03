@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { exerciseLibrary, exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
+import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, completeWorkout, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
 
 const program = generateProgram(new Date().toISOString().slice(0, 10));
 const today = new Date().toISOString().slice(0, 10);
@@ -65,8 +65,13 @@ state = refreshMicroTasks(state);
 assert.equal(state.microTasks.length, 5);
 assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => !task.completed));
+assert.ok(state.microTasks.every((task) => task.equipment.length === 0));
 assert.equal(state.quickSetBonus, null);
 assert.ok(state.microTasks.some((task) => !completedSetIds.includes(task.id)));
+state.xp.strength = 100000;
+state.microTasks = [microTaskPool.find((task) => task.equipment.includes("jump rope"))];
+state = ensureMicroTasks(state);
+assert.ok(state.microTasks.every((task) => task.equipment.length === 0));
 state.quickTaskDate = "2000-01-01";
 state.microTasks[0].completed = true;
 state = ensureMicroTasks(state);
@@ -91,6 +96,12 @@ for (const day of program.slice(0, 3)) {
 assert.equal(taskProgress(state, program[2]).completed, 9);
 assert.equal(stats(state, program).taskStreak, 3);
 assert.ok(state.streakBonuses["tasks-3"]);
+
+let directWorkoutState = initialState();
+const workoutForm = { get: () => null };
+directWorkoutState = completeWorkout(directWorkoutState, program[0], workoutForm);
+directWorkoutState = completeWorkout(directWorkoutState, program[1], workoutForm);
+assert.equal(stats(directWorkoutState, program).taskStreak, 2);
 
 let queueState = initialState();
 queueState.workouts = { 3: { completed: true }, 5: { completed: true }, 7: { completed: true } };

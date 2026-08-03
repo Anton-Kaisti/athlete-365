@@ -52,7 +52,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260726-14", { updateViaCache: "none" })
+    .register("./sw.js?v=20260803-18", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -184,8 +184,8 @@ function tasksView() {
           <p>Tier 1 now includes a broader mix of strength, balance, core, and mobility. Later tiers add circuits, bands, rings, jump rope, and density work as your total level rises.</p>
         </article>
         <article class="card">
-          <h3>Streak bonuses</h3>
-          <p>Clear all planned workout tasks to extend the task streak. Bonuses are paid once when you hit each milestone.</p>
+          <h3>Workout streak bonuses</h3>
+          <p>Complete a planned workout to extend your workout streak. Bonuses are paid once when you hit each milestone.</p>
           <div class="bonus-grid">
             ${bonusPill("3 days", "75 XP", state.streakBonuses["tasks-3"])}
             ${bonusPill("1 week", "200 XP", state.streakBonuses["tasks-7"])}
@@ -201,7 +201,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260731-17</p>
+            <p>Build 20260803-18</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -690,7 +690,7 @@ function metricCards(s) {
     <div class="metrics">
       ${metric("Total level", s.totalLevel)}
       ${metric("Quick tasks", s.microTasksDone)}
-      ${metric("Task streak", `${s.taskStreak} days`)}
+      ${metric("Workout streak", `${s.taskStreak} days`)}
       ${metric("Workouts", s.completedCount)}
     </div>
   `;
