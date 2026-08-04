@@ -485,14 +485,27 @@ export function taskKey(dayNumber, taskId) {
 }
 
 export function taskStreak(state, program) {
-  let count = 0;
-  for (const day of program) {
-    // A streak is earned by completing the planned workout, whether it was
-    // logged from the workout form or by checking its full-workout task.
-    if (state.workouts?.[String(day.dayNumber)]?.completed) count += 1;
-    else if (new Date(day.date) < new Date(todayIso())) count = 0;
+  // A streak tracks consecutive workout completions, not program-day numbers.
+  // Multiple workouts on one day all count; it breaks only after a calendar day
+  // with no completed workout.
+  const dates = Object.values(state.workouts || {})
+    .filter((workout) => workout?.completed && workout.date)
+    .map((workout) => workout.date.slice(0, 10))
+    .sort();
+  if (!dates.length) return 0;
+  if (calendarDayDifference(dates.at(-1), todayIso()) > 1) return 0;
+  let count = 1;
+  for (let index = dates.length - 1; index > 0; index -= 1) {
+    if (calendarDayDifference(dates[index - 1], dates[index]) > 1) break;
+    count += 1;
   }
   return count;
+}
+
+function calendarDayDifference(first, second) {
+  const [firstYear, firstMonth, firstDay] = first.split("-").map(Number);
+  const [secondYear, secondMonth, secondDay] = second.split("-").map(Number);
+  return Math.round((Date.UTC(secondYear, secondMonth - 1, secondDay) - Date.UTC(firstYear, firstMonth - 1, firstDay)) / 86400000);
 }
 
 function awardXp(state, skills, xp) {

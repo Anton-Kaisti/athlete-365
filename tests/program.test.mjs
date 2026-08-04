@@ -107,6 +107,18 @@ const workoutForm = { get: () => null };
 directWorkoutState = completeWorkout(directWorkoutState, program[0], workoutForm);
 directWorkoutState = completeWorkout(directWorkoutState, program[1], workoutForm);
 assert.equal(stats(directWorkoutState, program).taskStreak, 2);
+const todayDate = new Date().toISOString().slice(0, 10);
+let sameDayStreakState = initialState();
+sameDayStreakState.workouts = {
+  1: { completed: true, date: `${todayDate}T08:00:00.000Z` },
+  2: { completed: true, date: `${todayDate}T10:00:00.000Z` },
+  3: { completed: true, date: `${todayDate}T12:00:00.000Z` }
+};
+assert.equal(stats(sameDayStreakState, program).taskStreak, 3);
+let brokenStreakState = initialState();
+const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+brokenStreakState.workouts = { 1: { completed: true, date: `${twoDaysAgo}T12:00:00.000Z` } };
+assert.equal(stats(brokenStreakState, program).taskStreak, 0);
 let minimumState = completeMinimumWorkout(initialState(), program[0]);
 assert.equal(minimumState.workouts["1"].minimum, true);
 assert.equal(minimumState.workouts["1"].gained, 70);
