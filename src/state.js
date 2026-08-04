@@ -16,7 +16,10 @@ export function initialState() {
       sessionDuration: 30,
       units: "metric",
       theme: "dark",
-      limitations: ""
+      limitations: "",
+      quickDuration: 120,
+      quietQuickTasks: false,
+      goal: "Balanced"
     },
     xp: Object.fromEntries(SKILLS.map((skill) => [skill, 0])),
     microTasks: [],
@@ -92,36 +95,32 @@ export const microTaskPool = [
   tierTask(1, "30-Second Single-Leg Balance", "Balance for 15 seconds per side near a support.", 10, ["athleticism", "recovery"], [], ["Single-Leg Balance"]),
   tierTask(1, "10 Good Mornings", "Hinge slowly with a long spine and soft knees.", 12, ["legs", "mobility"], [], ["Good Morning"]),
   tierTask(1, "20 Arm Circles", "Use 10 controlled circles in each direction.", 10, ["mobility", "recovery"], [], ["Arm Circle"]),
+  tierTask(1, "30-Second Posture Reset", "Stand tall, gently brace, and open the chest for 30 seconds.", 10, ["mobility", "recovery"], [], ["Wall Slide"]),
   tierTask(1, "10 Incline Push-Ups", "Use a stable chair or counter and keep a straight body line.", 14, ["push", "strength"], [], ["Incline Push-Up"]),
-  tierTask(2, "3 Rounds: 8 Push-Ups + 12 Squats", "Move steadily and stop before form breaks.", 45, ["push", "legs", "strength"], [], ["Push-Up", "Squat"]),
-  tierTask(2, "2 Rounds: 20s Plank + 10 Sit-Ups", "Brace hard and keep reps controlled.", 36, ["core"], [], ["Plank", "Sit-Up"]),
+  tierTask(2, "12 Push-Ups + 12 Squats", "Complete one clean, steady round in about a minute.", 45, ["push", "legs", "strength"], [], ["Push-Up", "Squat"]),
+  tierTask(2, "30s Plank + 10 Sit-Ups", "Brace hard and keep reps controlled; finish within a minute.", 36, ["core"], [], ["Plank", "Sit-Up"]),
   tierTask(2, "20 Split Squats", "Complete 10 reps per side.", 34, ["legs", "strength"], [], ["Split Squat"]),
   tierTask(2, "60-Second Mobility Flow", "Move through hips, t-spine, ankles, and shoulders.", 25, ["mobility", "recovery"], [], ["Mobility Flow"]),
   tierTask(2, "30 Low Pogo Jumps", "Bounce lightly and quietly through the ankles.", 35, ["athleticism", "legs"], [], ["Pogo Jump"]),
-  tierTask(2, "3 Rounds: 10 Calf Raises + 10 Tibialis Raises", "Build lower-leg capacity.", 38, ["legs", "recovery"], [], ["Calf Raise", "Tibialis Raise"]),
-  tierTask(2, "Chair Step-Ups", "Complete 10 controlled step-ups per side.", 42, ["legs", "strength"], ["chair"], ["Step-Up"]),
-  tierTask(2, "Bear Crawl Practice", "Crawl forward and backward for 60 seconds with quiet steps.", 32, ["core", "athleticism"], [], ["Bear Crawl"]),
-  tierTask(2, "Band Pull-Aparts", "Complete 3 sets of 12 smooth reps.", 34, ["pull", "recovery"], ["resistance bands"], ["Band Pull-Apart"]),
-  tierTask(2, "Jump Rope Rhythm", "Accumulate 3 minutes of relaxed skipping.", 40, ["athleticism", "recovery"], ["jump rope"], ["Jump Rope"]),
-  tierTask(2, "Wall Sit", "Accumulate 90 seconds with steady breathing.", 34, ["legs", "strength"], [], ["Wall Sit"]),
-  tierTask(3, "5-Minute Bodyweight Circuit", "Cycle push-ups, squats, sit-ups, and plank until time ends.", 80, ["strength", "core", "legs", "push"], [], ["Push-Up", "Squat", "Sit-Up", "Plank"]),
-  tierTask(3, "4 Rounds: 6 Push-Ups + 8 Lunges", "Keep every rep clean.", 70, ["push", "legs", "strength"], [], ["Push-Up", "Reverse Lunge"]),
+  tierTask(2, "20 Calf Raises + 10 Tibialis Raises", "Build lower-leg capacity in one quick round.", 38, ["legs", "recovery"], [], ["Calf Raise", "Tibialis Raise"]),
+  tierTask(2, "60-Second Bear Crawl", "Crawl forward and backward with quiet, controlled steps.", 32, ["core", "athleticism"], [], ["Bear Crawl"]),
+  tierTask(2, "60-Second Wall Sit", "Hold with steady breathing and full-foot pressure.", 34, ["legs", "strength"], [], ["Wall Sit"]),
+  tierTask(3, "90-Second Bodyweight Burst", "Cycle clean push-ups, squats, and sit-ups for 90 seconds.", 80, ["strength", "core", "legs", "push"], [], ["Push-Up", "Squat", "Sit-Up"]),
+  tierTask(3, "12 Push-Ups + 16 Lunges", "Complete one fast but controlled round.", 70, ["push", "legs", "strength"], [], ["Push-Up", "Reverse Lunge"]),
   tierTask(3, "90-Second Core Block", "Alternate hollow hold, side plank, and dead bug.", 62, ["core"], [], ["Hollow Hold", "Side Plank", "Dead Bug"]),
-  tierTask(3, "Skater Hop Practice", "Complete 3 x 6 controlled side-to-side hops.", 65, ["athleticism", "legs"], [], ["Skater Hop"]),
-  tierTask(3, "Pull-Up Bar Hang", "Accumulate 60 seconds of hanging.", 58, ["pull", "recovery"], ["pull-up bar"], ["Dead Hang"]),
-  tierTask(3, "Band Row Ladder", "Complete 8, 10, 12, and 14 controlled rows.", 68, ["pull", "strength"], ["resistance bands"], ["Band Row"]),
-  tierTask(3, "Jump Rope Intervals", "Complete 5 rounds of 30 seconds on and 30 seconds easy.", 72, ["athleticism", "recovery"], ["jump rope"], ["Jump Rope"]),
-  tierTask(3, "Single-Leg Strength Mix", "Complete 3 rounds of 6 step-ups and 6 split squats per side.", 74, ["legs", "strength"], ["chair"], ["Step-Up", "Split Squat"]),
-  tierTask(4, "10-Minute Density Block", "Rotate push-ups, squats, and core with perfect form.", 140, ["strength", "push", "legs", "core"], [], ["Push-Up", "Squat", "Plank"]),
-  tierTask(4, "Advanced Leg Control", "3 rounds of split squats, calf raises, and skater holds.", 120, ["legs", "athleticism"], [], ["Split Squat", "Calf Raise", "Skater Hop"]),
-  tierTask(4, "Ring Row Mini-Workout", "4 x 8 ring rows with 60 seconds rest.", 110, ["pull", "strength"], ["rings"], ["Ring Row"]),
-  tierTask(4, "Explosive Push-Up Practice", "5 x 3 fast push-ups with soft landings.", 105, ["push", "athleticism"], [], ["Plyo Push-Up"]),
-  tierTask(4, "Pull and Core Complex", "Complete 5 rounds of ring rows and hollow holds.", 125, ["pull", "core", "strength"], ["rings"], ["Ring Row", "Hollow Hold"]),
-  tierTask(4, "Athletic Jump Rope Test", "Complete 10 rounds of 40 seconds fast and 20 seconds easy.", 135, ["athleticism", "recovery"], ["jump rope"], ["Jump Rope"])
+  tierTask(3, "20 Skater Hops", "Make 10 controlled side-to-side hops per side.", 65, ["athleticism", "legs"], [], ["Skater Hop"]),
+  tierTask(3, "60-Second Pull-Up Bar Hang", "Accumulate a minute of relaxed, active hanging.", 58, ["pull", "recovery"], ["pull-up bar"], ["Dead Hang"]),
+  tierTask(3, "20 Split Squats", "Complete 10 controlled reps per side.", 74, ["legs", "strength"], [], ["Split Squat"]),
+  tierTask(4, "90-Second Density Block", "Rotate push-ups, squats, and a plank with perfect form.", 140, ["strength", "push", "legs", "core"], [], ["Push-Up", "Squat", "Plank"]),
+  tierTask(4, "Advanced Leg Control", "Complete 10 split squats per side, then 20 calf raises.", 120, ["legs", "athleticism"], [], ["Split Squat", "Calf Raise"]),
+  tierTask(4, "15 Explosive Push-Ups", "Perform fast push-ups with soft landings; use regular push-ups if needed.", 105, ["push", "athleticism"], [], ["Plyo Push-Up"]),
+  tierTask(4, "60-Second Pull and Core", "Alternate short hangs and a hollow hold for one minute.", 125, ["pull", "core", "strength"], ["pull-up bar"], ["Dead Hang", "Hollow Hold"]),
+  tierTask(4, "60-Second Athletic Burst", "Alternate fast mountain climbers and controlled skater hops.", 135, ["athleticism", "recovery"], [], ["Mountain Climber", "Skater Hop"])
 ];
 
 export function ensureMicroTasks(state) {
   const next = { ...state };
+  next.profile = { ...initialState().profile, ...(next.profile || {}) };
   const today = todayIso();
   next.quickSetId = Number(next.quickSetId) || 1;
   // A quick-task set belongs to one calendar day. Existing saves without this
@@ -142,7 +141,7 @@ export function ensureMicroTasks(state) {
   next.microTasks = (Array.isArray(next.microTasks) ? next.microTasks : [])
     .filter((task) => {
       const definition = microTaskPool.find((candidate) => candidate.id === task?.id);
-      return definition && definition.equipment.length === 0 && !seen.has(task.id) && seen.add(task.id);
+      return definition && taskIsAvailable(definition, next) && !seen.has(task.id) && seen.add(task.id);
     })
     .slice(0, QUICK_TASK_COUNT)
     .map((task) => {
@@ -202,6 +201,14 @@ export function refreshMicroTasks(state) {
   return next;
 }
 
+export function replaceMicroTask(state, slotIndex) {
+  const next = structuredClone(ensureMicroTasks(state));
+  if (!next.microTasks[slotIndex] || next.microTasks[slotIndex].completed) return next;
+  next.microTasks.splice(slotIndex, 1);
+  next.microTasks.splice(slotIndex, 0, drawMicroTask(next, next.quickSetId * 29 + slotIndex));
+  return next;
+}
+
 export function undoLastAction(state) {
   const next = structuredClone(ensureMicroTasks(state));
   const undo = next.lastUndo;
@@ -255,6 +262,38 @@ export function completeWorkout(state, day, form) {
     jointPain: Number(form.get("jointPain") || 0),
     bodyweight: form.get("bodyweight") || "",
     notes: form.get("notes") || "",
+    gained
+  };
+  updatePersonalBest(next, `${day.phase} workout XP`, gained);
+  awardTaskStreakBonus(next, programForState(next), day.dayNumber);
+  next.achievements = achievementsFor(next, programForState(next));
+  return next;
+}
+
+export function completeMinimumWorkout(state, day) {
+  const next = structuredClone(state);
+  const workoutKey = String(day.dayNumber);
+  if (next.workouts[workoutKey]?.completed) return next;
+  const gained = 70;
+  awardXp(next, ["mobility", "recovery"], gained);
+  next.taskCompletions[`day-${day.dayNumber}:full-workout`] = {
+    completed: true,
+    date: new Date().toISOString(),
+    xp: gained,
+    skills: ["mobility", "recovery"],
+    createdWorkout: true,
+    minimum: true
+  };
+  next.workouts[workoutKey] = {
+    completed: true,
+    minimum: true,
+    date: new Date().toISOString(),
+    energy: 3,
+    sleep: 3,
+    soreness: 2,
+    jointPain: 0,
+    bodyweight: "",
+    notes: "Minimum viable workout completed.",
     gained
   };
   awardTaskStreakBonus(next, programForState(next), day.dayNumber);
@@ -463,19 +502,62 @@ function awardXp(state, skills, xp) {
   });
 }
 
+function updatePersonalBest(state, label, value) {
+  state.records = Array.isArray(state.records) ? state.records : [];
+  const existing = state.records.find((record) => record.label === label);
+  if (!existing || value > existing.value) {
+    if (existing) Object.assign(existing, { value, date: new Date().toISOString() });
+    else state.records.push({ label, value, date: new Date().toISOString() });
+  }
+}
+
 function tierTask(tier, title, detail, xp, skills, equipment = [], movements = []) {
-  return { id: slug(title), tier, title, detail, xp, skills, equipment, movements };
+  return { id: slug(title), tier, title, detail, xp, skills, equipment, movements, maxDurationSeconds: estimatedDurationSeconds(title, detail) };
+}
+
+function estimatedDurationSeconds(title, detail) {
+  const text = `${title} ${detail}`;
+  const seconds = text.match(/(\d+)\s*(?:seconds?|secs?|s)\b/i);
+  if (seconds) return Number(seconds[1]);
+  const minutes = text.match(/(\d+)\s*(?:minutes?|mins?|min)\b/i);
+  return minutes ? Number(minutes[1]) * 60 : 90;
 }
 
 function drawMicroTask(state, salt) {
-  // Quick tasks must be possible anywhere, so they never require equipment.
-  const available = microTaskPool.filter((task) => task.tier <= unlockedTier(state) && task.equipment.length === 0);
+  const available = microTaskPool
+    .filter((task) => task.tier <= unlockedTier(state) && taskIsAvailable(task, state))
+    .sort((a, b) => quickTaskPriority(b, state) - quickTaskPriority(a, state));
+  const fallback = microTaskPool.filter((task) => task.tier <= unlockedTier(state) && task.equipment.length === 0);
+  const candidates = available.length ? available : fallback;
   const recentIds = new Set((state.microTaskHistory || []).slice(0, 6).map((task) => task.id));
   const currentIds = new Set((state.microTasks || []).map((task) => task.id));
-  const filtered = available.filter((task) => !recentIds.has(task.id) && !currentIds.has(task.id));
-  const pool = filtered.length ? filtered : available.filter((task) => !currentIds.has(task.id));
+  const filtered = candidates.filter((task) => !recentIds.has(task.id) && !currentIds.has(task.id));
+  const pool = filtered.length ? filtered : candidates.filter((task) => !currentIds.has(task.id));
   const seed = Object.values(state.xp || {}).reduce((sum, value) => sum + value, 0) + salt * 17 + (state.microTaskHistory || []).length * 31;
   return { ...pool[Math.abs(seed) % pool.length], completed: false, completedAt: null };
+}
+
+function taskIsAvailable(task, state) {
+  const profile = state.profile || {};
+  if (task.maxDurationSeconds > Number(profile.quickDuration || 120)) return false;
+  if (!task.equipment.every((item) => item === "pull-up bar" && profile.equipment?.includes(item))) return false;
+  const text = `${task.title} ${task.detail} ${task.movements.join(" ")}`.toLowerCase();
+  if (profile.quietQuickTasks && /(jump|hop|plyo|mountain climber)/.test(text)) return false;
+  const limitations = String(profile.limitations || "").toLowerCase();
+  if (/(knee|ankle)/.test(limitations) && /(jump|hop|squat|lunge|split squat)/.test(text)) return false;
+  if (/(wrist|shoulder)/.test(limitations) && /(push-up|plank|bear crawl|mountain climber)/.test(text)) return false;
+  if (/(no floor|standing)/.test(limitations) && /(plank|sit-up|dead bug|glute bridge|bear crawl)/.test(text)) return false;
+  return true;
+}
+
+function quickTaskPriority(task, state) {
+  const goalSkills = {
+    Strength: ["strength", "push", "pull", "legs"],
+    Skills: ["athleticism", "push", "pull", "core"],
+    Mobility: ["mobility", "recovery"],
+    Balanced: []
+  }[state.profile?.goal || "Balanced"] || [];
+  return task.skills.filter((skill) => goalSkills.includes(skill)).length;
 }
 
 export function dailyTaskCount(state, date = todayIso()) {

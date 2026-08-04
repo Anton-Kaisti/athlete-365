@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { exerciseLibrary, exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, completeWorkout, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
+import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, completeWorkout, completeMinimumWorkout, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
 
 const program = generateProgram(new Date().toISOString().slice(0, 10));
 const today = new Date().toISOString().slice(0, 10);
@@ -21,6 +21,8 @@ assert.ok(xpForExercise(program[0].exercises[0], { difficulty: 3, pain: 6, formG
 const alphabeticalExercises = exercisesAlphabetically().map((exercise) => exercise.name);
 assert.deepEqual(alphabeticalExercises, [...alphabeticalExercises].sort((a, b) => a.localeCompare(b)));
 assert.ok(microTaskPool.every((task) => task.movements.length > 0));
+assert.ok(microTaskPool.every((task) => task.maxDurationSeconds <= 120));
+assert.ok(microTaskPool.every((task) => task.equipment.every((item) => item === "pull-up bar")));
 assert.ok(microTaskPool.every((task) => task.movements.every((name) => exerciseLibrary[name])));
 assert.ok(microTaskPool.every((task) => task.movements.every((name) => exerciseLibrary[name].setup && exerciseLibrary[name].steps.length >= 2)));
 
@@ -45,7 +47,7 @@ state = ensureMicroTasks(state);
 assert.equal(state.microTasks.length, 5);
 assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => task.tier === 1));
-assert.ok(state.microTasks.every((task) => task.equipment.length === 0));
+assert.ok(state.microTasks.every((task) => task.equipment.length === 0 || task.equipment.every((item) => item === "pull-up bar")));
 const firstQuickTask = state.microTasks[0].id;
 state = completeMicroTask(state, 0);
 assert.equal(state.microTaskHistory.length, 1);
@@ -65,13 +67,16 @@ state = refreshMicroTasks(state);
 assert.equal(state.microTasks.length, 5);
 assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => !task.completed));
-assert.ok(state.microTasks.every((task) => task.equipment.length === 0));
+assert.ok(state.microTasks.every((task) => task.equipment.length === 0 || task.equipment.every((item) => item === "pull-up bar")));
 assert.equal(state.quickSetBonus, null);
 assert.ok(state.microTasks.some((task) => !completedSetIds.includes(task.id)));
 state.xp.strength = 100000;
-state.microTasks = [microTaskPool.find((task) => task.equipment.includes("jump rope"))];
+state.microTasks = [microTaskPool.find((task) => task.equipment.includes("pull-up bar"))];
 state = ensureMicroTasks(state);
-assert.ok(state.microTasks.every((task) => task.equipment.length === 0));
+assert.ok(state.microTasks.every((task) => task.equipment.length === 0 || task.equipment.every((item) => item === "pull-up bar")));
+state.profile.quickDuration = 30;
+state = refreshMicroTasks(state);
+assert.ok(state.microTasks.every((task) => task.maxDurationSeconds <= 30));
 state.quickTaskDate = "2000-01-01";
 state.microTasks[0].completed = true;
 state = ensureMicroTasks(state);
@@ -102,6 +107,9 @@ const workoutForm = { get: () => null };
 directWorkoutState = completeWorkout(directWorkoutState, program[0], workoutForm);
 directWorkoutState = completeWorkout(directWorkoutState, program[1], workoutForm);
 assert.equal(stats(directWorkoutState, program).taskStreak, 2);
+let minimumState = completeMinimumWorkout(initialState(), program[0]);
+assert.equal(minimumState.workouts["1"].minimum, true);
+assert.equal(minimumState.workouts["1"].gained, 70);
 
 let queueState = initialState();
 queueState.workouts = { 3: { completed: true }, 5: { completed: true }, 7: { completed: true } };

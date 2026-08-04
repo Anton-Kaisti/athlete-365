@@ -1,13 +1,13 @@
-const CACHE = "athlete-365-v20260803-18";
+const CACHE = "athlete-365-v20260804-19";
 const ASSETS = [
   "./",
   "./index.html",
   "./reset-update.html",
-  "./manifest.webmanifest?v=20260803-18",
-  "./src/app.js?v=20260803-18",
+  "./manifest.webmanifest?v=20260804-19",
+  "./src/app.js?v=20260804-19",
   "./src/program.js",
   "./src/state.js",
-  "./src/styles.css?v=20260803-18"
+  "./src/styles.css?v=20260804-19"
 ];
 
 self.addEventListener("install", (event) => {
