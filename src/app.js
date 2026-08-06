@@ -54,7 +54,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260806-23", { updateViaCache: "none" })
+    .register("./sw.js?v=20260806-24", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -204,7 +204,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260806-23</p>
+            <p>Build 20260806-24</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
