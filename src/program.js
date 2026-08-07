@@ -54,7 +54,7 @@ export const exerciseLibrary = {
   "Good Morning": item("Good Morning", "legs", [], "Hinge at the hips with a long spine.", "Wall hip hinge", "Band-resisted good morning", ["Single-leg RDL"]),
   "Hollow Hold": item("Hollow Hold", "core", [], "Press low back down and breathe behind the brace.", "Dead bug", "Long hollow hold", ["Dead bug"]),
   "Incline Push-Up": item("Incline Push-Up", "push", [], "Keep a straight body line while lowering toward a stable support.", "Wall push-up", "Lower incline push-up", ["Push-up"]),
-  "Jump Rope": item("Jump Rope", "athleticism", ["jump rope"], "Stay tall and bounce lightly through the ankles.", "Marching", "Double-under practice", ["Low pogo jump", "Jumping jack"]),
+  "Jump Rope": item("Jump Rope", "athleticism", ["jump rope"], "Build a relaxed, unbroken rhythm; stop the interval if your landings become heavy or form breaks down.", "Marching", "Double-under practice", ["Low pogo jump", "Jumping jack"]),
   "L-Sit Tuck": item("L-Sit Tuck", "core", ["rings"], "Push the support away and keep the knees high.", "Seated knee lift", "One-leg L-sit", ["Chair support hold"]),
   "Lateral Bound": item("Lateral Bound", "athleticism", [], "Stick each landing before the next rep.", "Side step and hold", "Continuous skater bounds", ["Lateral step-down"]),
   "Mobility Flow": item("Mobility Flow", "mobility", [], "Move slowly through hips, ankles, t-spine, and shoulders.", "Shorter flow", "Longer flow", ["Breathing reset"]),
@@ -228,16 +228,17 @@ function prescribe(name, weekday, intensity, blockBonus, index, isBenchmark) {
   const isHold = ["Active Hang", "Dead Hang", "Plank", "Side Plank", "Hollow Hold", "L-Sit Tuck", "Wall Handstand Hold", "Copenhagen Plank"].includes(name);
   const isMobility = lib.category === "mobility" || lib.category === "recovery";
   const isJump = lib.category === "athleticism";
+  const isJumpRope = name === "Jump Rope";
   const sets = isBenchmark ? 2 : isMobility ? 1 : isJump ? 3 : Math.min(5, 2 + Math.max(0, intensity) + (index < 3 ? 1 : 0));
-  const reps = isHold ? `${20 + hard * 5}-${35 + hard * 6} sec` : isMobility ? `${8 + hard * 2}-${12 + hard * 2} min` : isJump ? `${3 + Math.min(2, hard)} quality reps` : `${6 + hard}-${10 + hard * 2}`;
+  const reps = isHold ? `${20 + hard * 5}-${35 + hard * 6} sec` : isMobility ? `${8 + hard * 2}-${12 + hard * 2} min` : isJumpRope ? `${30 + Math.min(30, hard * 10)} sec` : isJump ? `${3 + Math.min(2, hard)} quality reps` : `${6 + hard}-${10 + hard * 2}`;
   return {
     name,
     category: lib.category,
     sets,
     reps,
-    restSeconds: isMobility ? 30 : isJump ? 75 : 60 + Math.min(60, hard * 10),
+    restSeconds: isMobility ? 30 : isJumpRope ? 60 : isJump ? 75 : 60 + Math.min(60, hard * 10),
     tempo: isJump || isMobility ? "controlled" : intensity >= 2 ? "31X1" : "2111",
-    targetRIR: isMobility ? null : isJump ? 4 : Math.max(1, 3 - Math.min(2, intensity)),
+    targetRIR: isMobility || isJumpRope ? null : isJump ? 4 : Math.max(1, 3 - Math.min(2, intensity)),
     cue: lib.cue,
     regression: lib.regression,
     progression: lib.progression,

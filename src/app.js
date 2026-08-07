@@ -3,6 +3,7 @@ import {
   DAILY_TASK_MILESTONES,
   QUICK_SET_BONUS_XP,
   completeMicroTask,
+  completeMinimumWorkout,
   completeTask,
   completeWorkout,
   dailyTasksFor,
@@ -10,9 +11,11 @@ import {
   exportJson,
   isSignedIn,
   loadState,
+  nextIncompleteWorkoutDay,
   programForState,
   readinessAdvice,
   refreshMicroTasks,
+  replaceMicroTask,
   resetState,
   saveState,
   signIn,
@@ -51,7 +54,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260726-14", { updateViaCache: "none" })
+    .register("./sw.js?v=20260806-24", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -134,7 +137,7 @@ function tasksView() {
           <div>
             <p class="eyebrow">Quick task queue</p>
             <h2>${state.profile.name}'s quick tasks</h2>
-            <p>Complete all five for ${QUICK_SET_BONUS_XP} bonus XP. Finished tasks stay here until you refresh the set.</p>
+            <p>Complete all five for ${QUICK_SET_BONUS_XP} bonus XP. A fresh set starts immediately after you finish one.</p>
           </div>
           <strong class="level-badge">${quickCompleted}/5</strong>
         </div>
@@ -144,8 +147,8 @@ function tasksView() {
             <div class="bar"><span style="width:${quickCompleted * 20}%"></span></div>
             <small>${state.quickSetBonus?.quickSetId === state.quickSetId ? `${QUICK_SET_BONUS_XP} bonus XP earned` : `${5 - quickCompleted} left for the bonus`}</small>
           </div>
-          <button type="button" data-refresh-micro>${quickCompleted === 5 ? "New set" : "Refresh tasks"}</button>
         </div>
+        <div class="quick-set-toolbar"><small>${state.profile.goal} focus · up to ${state.profile.quickDuration}s${state.profile.quietQuickTasks ? " · quiet mode" : ""}</small><button type="button" data-refresh-quick>New queue</button></div>
         <div class="micro-task-list">
           ${state.microTasks.map((task, index) => microTaskCard(task, index)).join("")}
         </div>
@@ -184,8 +187,8 @@ function tasksView() {
           <p>Tier 1 now includes a broader mix of strength, balance, core, and mobility. Later tiers add circuits, bands, rings, jump rope, and density work as your total level rises.</p>
         </article>
         <article class="card">
-          <h3>Streak bonuses</h3>
-          <p>Clear all planned workout tasks to extend the task streak. Bonuses are paid once when you hit each milestone.</p>
+          <h3>Workout streak bonuses</h3>
+          <p>Complete a planned workout to extend your workout streak. Bonuses are paid once when you hit each milestone.</p>
           <div class="bonus-grid">
             ${bonusPill("3 days", "75 XP", state.streakBonuses["tasks-3"])}
             ${bonusPill("1 week", "200 XP", state.streakBonuses["tasks-7"])}
@@ -201,7 +204,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260726-14</p>
+            <p>Build 20260806-24</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -219,9 +222,11 @@ function microTaskCard(task, index) {
         <p class="eyebrow">Tier ${task.tier} - ${task.skills.join(" + ")}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
-        <small>${task.completed ? "Completed - stays in this set" : task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"}</small>
+        <small><b>Why this task?</b> ${whyQuickTask(task)}</small>
+        <small>${task.completed ? "Completed today" : task.equipment.length ? `Needs ${task.equipment.join(", ")}` : "No equipment"}</small>
       </div>
       ${taskCardAside(task, timerKey, `micro:${index}`)}
+      ${task.completed ? "" : `<button type="button" class="task-swap" data-swap-micro="${index}">Swap</button>`}
     </article>
   `;
 }
@@ -453,6 +458,7 @@ function dashboardView() {
           </label>
           <div class="actions">
             <button class="primary" type="submit">${state.workouts[String(day.dayNumber)]?.completed ? "Workout logged" : "Finish workout and earn XP"}</button>
+            <button type="button" data-minimum-workout ${state.workouts[String(day.dayNumber)]?.completed ? "disabled" : ""}>Minimum workout (5 min)</button>
             <button type="button" data-route="tasks">Back to tasks</button>
             <button type="button" data-route="calendar">Pick another day</button>
           </div>
@@ -586,10 +592,21 @@ function progressView() {
   const s = stats(state, program);
   const recent = Object.entries(state.workouts).slice(-8).reverse();
   const quick = (state.microTaskHistory || []).slice(0, 8);
+  const review = weeklyReview();
   return `
     <section class="page-grid">
       <article class="card span">${metricCards(s)}</article>
       <article class="card span">${skillsPanel()}</article>
+      <article class="card span">
+        <p class="eyebrow">Last 7 days</p>
+        <h3>Weekly review</h3>
+        <div class="timeline">
+          <p><b>${review.sessions} completed session${review.sessions === 1 ? "" : "s"}</b>${review.quickTasks ? ` and ${review.quickTasks} quick task${review.quickTasks === 1 ? "" : "s"}` : ""}.</p>
+          <p><b>Recovery trend:</b> ${review.recoveryTrend}</p>
+          <p><b>Strongest skills:</b> ${review.strongestSkills}</p>
+          <p><b>Next-week focus:</b> ${review.focus}</p>
+        </div>
+      </article>
       <article class="card">
         <h3>Recent quick tasks</h3>
         <div class="timeline">
@@ -601,6 +618,14 @@ function progressView() {
         <div class="timeline">
           ${recent.length ? recent.map(([day, workout]) => `<p><b>Day ${day}</b> - ${workout.gained} XP - energy ${workout.energy}/5</p>`).join("") : "<p>No workouts logged yet.</p>"}
         </div>
+      </article>
+      <article class="card">
+        <h3>Recovery and training load</h3>
+        <p>${recoverySummary()}</p>
+      </article>
+      <article class="card">
+        <h3>Personal bests</h3>
+        <div class="timeline">${state.records?.length ? state.records.slice(-6).reverse().map((record) => `<p><b>${record.label}</b> — ${record.value} XP</p>`).join("") : "<p>Finish a workout to set your first personal best.</p>"}</div>
       </article>
       <article class="card">
         <h3>Export</h3>
@@ -651,12 +676,15 @@ function settingsView() {
           <label class="field">Training level<select name="level"><option ${state.profile.level === "Foundation" ? "selected" : ""}>Foundation</option><option ${state.profile.level === "Intermediate" ? "selected" : ""}>Intermediate</option><option ${state.profile.level === "Advanced" ? "selected" : ""}>Advanced</option></select></label>
           <label class="field">Session duration<input type="number" name="sessionDuration" value="${state.profile.sessionDuration}" /></label>
           <label class="field">Theme<select name="theme"><option ${state.profile.theme === "dark" ? "selected" : ""}>dark</option><option ${state.profile.theme === "light" ? "selected" : ""}>light</option></select></label>
+          <label class="field">Training goal<select name="goal">${["Balanced", "Strength", "Skills", "Mobility"].map((goal) => `<option ${state.profile.goal === goal ? "selected" : ""}>${goal}</option>`).join("")}</select></label>
+          <label class="field">Quick-task maximum<select name="quickDuration"><option value="30" ${Number(state.profile.quickDuration) === 30 ? "selected" : ""}>30 seconds</option><option value="60" ${Number(state.profile.quickDuration) === 60 ? "selected" : ""}>1 minute</option><option value="120" ${Number(state.profile.quickDuration) === 120 ? "selected" : ""}>2 minutes</option></select></label>
         </div>
         <h3>Home equipment</h3>
         <div class="check-grid">
           ${equipment.map((item) => `<label><input type="checkbox" name="equipment" value="${item}" ${state.profile.equipment.includes(item) ? "checked" : ""} /> ${item}</label>`).join("")}
         </div>
         <label class="field wide">Limitations<textarea name="limitations" rows="3">${state.profile.limitations || ""}</textarea></label>
+        <label><input type="checkbox" name="quietQuickTasks" ${state.profile.quietQuickTasks ? "checked" : ""} /> Quiet quick tasks (no jumps or high-impact moves)</label>
         <div class="actions"><button class="primary" type="submit">Save settings</button><button type="button" data-reset>Reset local data</button></div>
         <div class="actions secondary-actions"><button type="button" data-sign-out>Sign out username</button></div>
       </form>
@@ -690,7 +718,7 @@ function metricCards(s) {
     <div class="metrics">
       ${metric("Total level", s.totalLevel)}
       ${metric("Quick tasks", s.microTasksDone)}
-      ${metric("Task streak", `${s.taskStreak} days`)}
+      ${metric("Workout streak", `${s.taskStreak} days`)}
       ${metric("Workouts", s.completedCount)}
     </div>
   `;
@@ -752,15 +780,19 @@ function bindEvents() {
     celebrateTask(button, task?.xp || 0);
     state = completeMicroTask(state, Number(button.dataset.microTask));
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
+    const earnedSetBonus = !alreadyEarnedSetBonus && state.quickSetBonus?.quickSetId === state.quickSetId;
+    if (earnedSetBonus) state = refreshMicroTasks(state);
     saveState(state);
     render();
-    const earnedSetBonus = !alreadyEarnedSetBonus && state.quickSetBonus?.quickSetId === state.quickSetId;
     if (earnedSetBonus) showQuickSetCompletePopup(skillChanges);
     else if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   }));
-  app.querySelector("[data-refresh-micro]")?.addEventListener("click", () => {
-    const completed = state.microTasks.filter((task) => task.completed).length;
-    if (completed > 0 && completed < state.microTasks.length && !confirm(`Refresh now? Your ${completed}/5 progress will be cleared and the ${QUICK_SET_BONUS_XP} XP set bonus will be forfeited.`)) return;
+  app.querySelectorAll("[data-swap-micro]").forEach((button) => button.addEventListener("click", () => {
+    state = replaceMicroTask(state, Number(button.dataset.swapMicro));
+    saveState(state);
+    render();
+  }));
+  app.querySelector("[data-refresh-quick]")?.addEventListener("click", () => {
     state = refreshMicroTasks(state);
     saveState(state);
     render();
@@ -777,6 +809,7 @@ function bindEvents() {
     const beforeSkillLevels = skillLevelsFor(state);
     if (!wasDone) celebrateTask(button, task?.xp || 0);
     state = completeTask(state, day, button.dataset.task);
+    if (!wasDone && state.workouts[String(day.dayNumber)]?.completed) selectedDay = advanceProgramDay(day.dayNumber);
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
@@ -786,13 +819,23 @@ function bindEvents() {
     event.preventDefault();
     const beforeSkillLevels = skillLevelsFor(state);
     state = completeWorkout(state, withSubstitutions(program[selectedDay - 1]), new FormData(event.currentTarget));
+    selectedDay = advanceProgramDay(selectedDay);
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);
     render();
     if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   });
+  app.querySelector("[data-minimum-workout]")?.addEventListener("click", () => {
+    const day = withSubstitutions(program[selectedDay - 1]);
+    state = completeMinimumWorkout(state, day);
+    selectedDay = advanceProgramDay(selectedDay);
+    saveState(state);
+    render();
+  });
   app.querySelectorAll(".calendar-day").forEach((button) => button.addEventListener("click", () => {
     selectedDay = Number(button.dataset.day);
+    state.activeProgramDay = selectedDay;
+    saveState(state);
     route = "tasks";
     render();
   }));
@@ -813,7 +856,10 @@ function bindEvents() {
       sessionDuration: Number(form.get("sessionDuration")),
       theme: form.get("theme"),
       limitations: form.get("limitations"),
-      equipment: form.getAll("equipment")
+      equipment: form.getAll("equipment"),
+      goal: form.get("goal"),
+      quickDuration: Number(form.get("quickDuration")),
+      quietQuickTasks: form.get("quietQuickTasks") === "on"
     };
     selectedDay = currentProgramDay();
     saveState(state);
@@ -853,6 +899,44 @@ function bindEvents() {
   }));
 }
 
+function recoverySummary() {
+  const recent = Object.values(state.workouts || {}).filter((workout) => workout.completed).slice(-7);
+  if (!recent.length) return "Log a few workouts to see your recent readiness pattern.";
+  const average = recent.reduce((sum, workout) => sum + Number(workout.energy || 3) + Number(workout.sleep || 3) - Number(workout.soreness || 2), 0) / recent.length;
+  return average < 3 ? "Recent readiness is low. Favor mobility, reduce volume, and use the minimum viable workout when needed." : average < 5 ? "Recent readiness is moderate. Keep intensity controlled and take recovery seriously." : "Recent readiness is strong. Your current training load looks sustainable.";
+}
+
+function whyQuickTask(task) {
+  const reasons = [`fits your ${state.profile.quickDuration}-second limit`];
+  const goalSkills = {
+    Strength: ["strength", "push", "pull", "legs"],
+    Skills: ["athleticism", "push", "pull", "core"],
+    Mobility: ["mobility", "recovery"]
+  }[state.profile.goal] || [];
+  if (task.skills.some((skill) => goalSkills.includes(skill))) reasons.push(`supports your ${state.profile.goal.toLowerCase()} goal`);
+  if (state.profile.quietQuickTasks) reasons.push("respects quiet mode");
+  if (state.profile.limitations?.trim()) reasons.push("avoids movements filtered by your limitations");
+  if (task.equipment.length) reasons.push("uses your available pull-up bar");
+  return reasons.join(" · ");
+}
+
+function weeklyReview() {
+  const now = Date.now();
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const workouts = Object.values(state.workouts || {}).filter((workout) => workout.completed && now - new Date(workout.date).getTime() < week);
+  const priorWorkouts = Object.values(state.workouts || {}).filter((workout) => workout.completed && now - new Date(workout.date).getTime() >= week && now - new Date(workout.date).getTime() < week * 2);
+  const quickTasks = (state.microTaskHistory || []).filter((task) => now - new Date(task.completedAt).getTime() < week).length;
+  const readiness = (items) => items.length ? items.reduce((sum, workout) => sum + Number(workout.energy || 3) + Number(workout.sleep || 3) - Number(workout.soreness || 2), 0) / items.length : null;
+  const currentReadiness = readiness(workouts);
+  const priorReadiness = readiness(priorWorkouts);
+  const recoveryTrend = currentReadiness === null ? "No readiness data yet—log a workout to start a trend." : priorReadiness === null ? `Your average readiness was ${currentReadiness.toFixed(1)}/8 this week.` : currentReadiness > priorReadiness + 0.4 ? "Improving compared with last week." : currentReadiness < priorReadiness - 0.4 ? "Lower than last week—consider a lighter start." : "Steady compared with last week.";
+  const orderedSkills = Object.entries(state.xp).sort((a, b) => b[1] - a[1]);
+  const strongestSkills = orderedSkills.slice(0, 2).map(([skill]) => cap(skill)).join(" and ");
+  const weakestSkill = orderedSkills.at(-1)?.[0] || "mobility";
+  const focus = currentReadiness !== null && currentReadiness < 3 ? "Prioritize recovery, mobility, and the minimum viable workout." : state.profile.goal === "Balanced" ? `Add a little extra ${cap(weakestSkill).toLowerCase()} work to balance your skills.` : `Keep building ${state.profile.goal.toLowerCase()} with the quick-task queue and planned sessions.`;
+  return { sessions: workouts.length, quickTasks, recoveryTrend, strongestSkills, focus };
+}
+
 function withSubstitutions(day) {
   return {
     ...day,
@@ -862,10 +946,16 @@ function withSubstitutions(day) {
 }
 
 function currentProgramDay() {
-  const start = new Date(`${state.profile.startDate}T00:00:00`);
-  const today = new Date();
-  const diff = Math.floor((today - start) / 86400000) + 1;
-  return Math.max(1, Math.min(365, diff));
+  const activeDay = Number(state.activeProgramDay) || 1;
+  const activeWorkout = state.workouts[String(activeDay)];
+  if (!activeWorkout?.completed) return activeDay;
+  return advanceProgramDay(activeDay);
+}
+
+function advanceProgramDay(completedDay) {
+  const nextDay = nextIncompleteWorkoutDay(state, programForState(state), completedDay);
+  state.activeProgramDay = nextDay;
+  return nextDay;
 }
 
 function navButton(id, label) {
@@ -1087,31 +1177,24 @@ function showQuickSetCompletePopup(skillChanges = []) {
       <span>5 / 5 complete</span>
       <h2 id="quick-set-complete-title">Quick task set cleared!</h2>
       <strong>+${QUICK_SET_BONUS_XP} XP</strong>
-      <p>You completed every quick task in the set and earned the full-set bonus.</p>
+      <p>You completed every quick task and earned the full-set bonus. Your next set of five is ready now.</p>
       <div class="actions">
-        <button type="button" class="primary" data-quick-set-new>Start a new set</button>
-        <button type="button" data-quick-set-keep>Keep completed tasks</button>
+        <button type="button" class="primary" data-quick-set-keep>Continue</button>
       </div>
     </article>
   `;
   celebrationLayer.append(overlay);
-  const finish = (startNewSet) => {
+  const finish = () => {
     overlay.remove();
     document.removeEventListener("keydown", dismissWithEscape);
-    if (startNewSet) {
-      state = refreshMicroTasks(state);
-      saveState(state);
-      render();
-    }
     if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   };
   const dismissWithEscape = (event) => {
-    if (event.key === "Escape") finish(false);
+    if (event.key === "Escape") finish();
   };
-  overlay.querySelector("[data-quick-set-new]").addEventListener("click", () => finish(true));
-  overlay.querySelector("[data-quick-set-keep]").addEventListener("click", () => finish(false));
+  overlay.querySelector("[data-quick-set-keep]").addEventListener("click", finish);
   document.addEventListener("keydown", dismissWithEscape);
-  overlay.querySelector("[data-quick-set-new]").focus();
+  overlay.querySelector("[data-quick-set-keep]").focus();
 }
 
 function skillLevelsFor(currentState) {
