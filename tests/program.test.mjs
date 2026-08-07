@@ -112,6 +112,12 @@ const workoutForm = { get: () => null };
 directWorkoutState = completeWorkout(directWorkoutState, program[0], workoutForm);
 directWorkoutState = completeWorkout(directWorkoutState, program[1], workoutForm);
 assert.equal(stats(directWorkoutState, program).taskStreak, 2);
+let quickStreakState = signIn(initialState(), "Anton");
+for (let set = 0; set < 3; set += 1) {
+  for (let index = 0; index < 5; index += 1) quickStreakState = completeMicroTask(quickStreakState, index);
+  if (set < 2) quickStreakState = refreshMicroTasks(quickStreakState);
+}
+assert.equal(stats(quickStreakState, program).taskStreak, 1);
 const todayDate = new Date().toISOString().slice(0, 10);
 let sameDayStreakState = initialState();
 sameDayStreakState.workouts = {

@@ -54,7 +54,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260806-24", { updateViaCache: "none" })
+    .register("./sw.js?v=20260807-25", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -188,7 +188,7 @@ function tasksView() {
         </article>
         <article class="card">
           <h3>Workout streak bonuses</h3>
-          <p>Complete a planned workout to extend your workout streak. Bonuses are paid once when you hit each milestone.</p>
+          <p>Complete a planned workout, or 15 quick tasks in one day, to extend your workout streak. Bonuses are paid once when you hit each milestone.</p>
           <div class="bonus-grid">
             ${bonusPill("3 days", "75 XP", state.streakBonuses["tasks-3"])}
             ${bonusPill("1 week", "200 XP", state.streakBonuses["tasks-7"])}
@@ -204,7 +204,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260806-24</p>
+            <p>Build 20260807-25</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
