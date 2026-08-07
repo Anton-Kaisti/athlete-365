@@ -184,7 +184,9 @@ export function completeMicroTask(state, slotIndex) {
     awardXp(next, ["strength", "recovery"], QUICK_SET_BONUS_XP);
   }
   awardDailyTaskMilestones(next);
-  next.achievements = achievementsFor(next, programForState(next));
+  const program = programForState(next);
+  if (quickTaskCount(next, completedAt.slice(0, 10)) === 15) awardTaskStreakBonus(next, program, null, completedAt.slice(0, 10), "quick");
+  next.achievements = achievementsFor(next, program);
   return next;
 }
 
@@ -224,6 +226,8 @@ export function undoLastAction(state) {
       awardXp(next, ["strength", "recovery"], -next.quickSetBonus.xp);
       next.quickSetBonus = null;
     }
+    const date = undo.historyEntry.completedAt.slice(0, 10);
+    if (quickTaskCount(next, date) < 15) removeTaskStreakBonusForQuickDate(next, date);
     next.lastUndo = null;
     next.achievements = achievementsFor(next, programForState(next));
   }
@@ -485,13 +489,15 @@ export function taskKey(dayNumber, taskId) {
 }
 
 export function taskStreak(state, program) {
-  // A streak tracks consecutive workout completions, not program-day numbers.
-  // Multiple workouts on one day all count; it breaks only after a calendar day
-  // with no completed workout.
-  const dates = Object.values(state.workouts || {})
+  // A streak tracks consecutive workout days. Completing 15 quick tasks earns
+  // one workout-day credit, unless a planned workout already covers that date.
+  const workoutDates = Object.values(state.workouts || {})
     .filter((workout) => workout?.completed && workout.date)
     .map((workout) => workout.date.slice(0, 10))
     .sort();
+  const workoutDateSet = new Set(workoutDates);
+  const quickDates = quickTaskDatesAtOrAbove(state, 15).filter((date) => !workoutDateSet.has(date));
+  const dates = [...workoutDates, ...quickDates].sort();
   if (!dates.length) return 0;
   if (calendarDayDifference(dates.at(-1), todayIso()) > 1) return 0;
   let count = 1;
@@ -607,9 +613,12 @@ function slug(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-function awardTaskStreakBonus(state, program, dayNumber) {
-  const day = program[dayNumber - 1];
-  if (!day || !state.workouts?.[String(dayNumber)]?.completed) return;
+function awardTaskStreakBonus(state, program, dayNumber, date = todayIso(), source = "workout") {
+  const day = dayNumber == null ? null : program[dayNumber - 1];
+  const qualifies = source === "quick"
+    ? quickTaskCount(state, date) >= 15
+    : Boolean(day && state.workouts?.[String(dayNumber)]?.completed);
+  if (!qualifies) return;
   const streakNow = taskStreak(state, program);
   const bonuses = { 3: 75, 7: 200, 14: 450, 30: 1200, 60: 2600, 100: 5000 };
   const bonus = bonuses[streakNow];
@@ -617,6 +626,8 @@ function awardTaskStreakBonus(state, program, dayNumber) {
   state.streakBonuses[`tasks-${streakNow}`] = {
     date: new Date().toISOString(),
     dayNumber,
+    streakDate: date,
+    source,
     xp: bonus
   };
   awardXp(state, ["recovery", "strength"], bonus);
@@ -629,6 +640,28 @@ function removeTaskStreakBonusForDay(state, dayNumber) {
       delete state.streakBonuses[key];
     }
   });
+}
+
+function removeTaskStreakBonusForQuickDate(state, date) {
+  Object.entries(state.streakBonuses || {}).forEach(([key, bonus]) => {
+    if (bonus.source === "quick" && bonus.streakDate === date) {
+      awardXp(state, ["recovery", "strength"], -bonus.xp);
+      delete state.streakBonuses[key];
+    }
+  });
+}
+
+function quickTaskCount(state, date) {
+  return (state.microTaskHistory || []).filter((task) => task.completedAt?.slice(0, 10) === date).length;
+}
+
+function quickTaskDatesAtOrAbove(state, threshold) {
+  const counts = new Map();
+  (state.microTaskHistory || []).forEach((task) => {
+    const date = task.completedAt?.slice(0, 10);
+    if (date) counts.set(date, (counts.get(date) || 0) + 1);
+  });
+  return [...counts].filter(([, count]) => count >= threshold).map(([date]) => date);
 }
 
 function streak(state, program) {
