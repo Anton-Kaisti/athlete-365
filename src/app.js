@@ -31,6 +31,7 @@ import {
   taskProgress,
   timerSecondsForTask,
   toggleSet,
+  unlockedQuickTier,
   undoLastAction
 } from "./state.js";
 
@@ -59,7 +60,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260811-26", { updateViaCache: "none" })
+    .register("./sw.js?v=20260811-27", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -112,6 +113,7 @@ function view() {
 
 function quickPoolView() {
   const tasks = repeatableTasksFor(state);
+  const unlockedTier = unlockedQuickTier(state);
   return `
     <section class="hero-grid">
       <article class="today-panel">
@@ -124,7 +126,7 @@ function quickPoolView() {
           <strong class="level-badge">${tasks.length} tasks</strong>
         </div>
         <div class="micro-task-list">
-          ${tasks.map((task) => repeatableTaskCard(task)).join("")}
+          ${tasks.map((task) => repeatableTaskCard(task, unlockedTier)).join("")}
         </div>
       </article>
       <aside class="side-panel">
@@ -159,6 +161,7 @@ function tasksView() {
   const s = stats(state, program);
   const quickCompleted = state.microTasks.filter((task) => task.completed).length;
   const todayRewards = state.dailyTaskRewards?.[new Date().toISOString().slice(0, 10)] || {};
+  const dailyWallSit = tasks.find((task) => task.id === "daily-wall-sit");
   const remainingXp = tasks
     .filter((task) => !state.taskCompletions[taskKey(day.dayNumber, task.id)])
     .reduce((sum, task) => sum + task.xp, 0);
@@ -185,6 +188,17 @@ function tasksView() {
           ${state.microTasks.map((task, index) => microTaskCard(task, index)).join("")}
         </div>
         ${undoPanel()}
+        <section class="daily-movement">
+          <div class="planned-head">
+            <div>
+              <p class="eyebrow">Daily movement</p>
+              <h2>Wall Sit challenge</h2>
+              <p>Use the stopwatch to set a personal best and earn full XP for each complete minute you hold.</p>
+            </div>
+            <strong class="level-badge">PB ${formatTimer(personalBestSeconds(state, "Wall Sit"))}</strong>
+          </div>
+          ${taskCard(dailyWallSit, day)}
+        </section>
         <div class="planned-head">
           <div>
             <p class="eyebrow">Day ${day.dayNumber} planned workout</p>
@@ -201,7 +215,7 @@ function tasksView() {
           <strong>${remainingXp} XP left today</strong>
         </div>
         <div class="task-list">
-          ${tasks.map((task) => taskCard(task, day)).join("")}
+          ${tasks.filter((task) => task.id !== "daily-wall-sit").map((task) => taskCard(task, day)).join("")}
         </div>
       </article>
       <aside class="side-panel">
@@ -236,7 +250,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260811-26</p>
+            <p>Build 20260811-27</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -263,19 +277,20 @@ function microTaskCard(task, index) {
   `;
 }
 
-function repeatableTaskCard(task) {
+function repeatableTaskCard(task, unlockedTier) {
   const timerKey = `repeatable:${task.id}`;
   const estimatedXp = task.stopwatch ? `${Math.round(task.xp / REPEATABLE_XP_DIVISOR)} XP/min` : `${repeatableXp(task)} XP`;
+  const locked = task.tier > unlockedTier;
   return `
-    <article class="task-card micro tier-${task.tier}">
-      <button type="button" class="task-check" data-repeatable-task="${task.id}" aria-label="Complete ${task.title}">+</button>
+    <article class="task-card micro tier-${task.tier} ${locked ? "locked" : ""}">
+      <button type="button" class="task-check" data-repeatable-task="${task.id}" aria-label="Complete ${task.title}" ${locked ? "disabled" : ""}>${locked ? "🔒" : "+"}</button>
       <div>
-        <p class="eyebrow">Tier ${task.tier} · repeatable</p>
+        <p class="eyebrow">Tier ${task.tier} · ${locked ? `unlock at Tier ${task.tier}` : "repeatable"}</p>
         <h3>${task.title}</h3>
         <p>${task.detail}</p>
-        <small>${task.stopwatch ? "Hold for at least 1:00, then finish. Each complete minute earns another minute of XP." : "Complete it as often as you want."}</small>
+        <small>${locked ? `Reach total level ${task.tier === 2 ? 20 : task.tier === 3 ? 45 : 80} to unlock this task.` : task.stopwatch ? "Hold for at least 1:00, then finish. Each complete minute earns another minute of XP." : "Complete it as often as you want."}</small>
       </div>
-      ${taskCardAside(task, timerKey, `repeatable:${task.id}`, estimatedXp)}
+      ${locked ? `<div class="task-card-aside"><strong>Locked</strong></div>` : taskCardAside(task, timerKey, `repeatable:${task.id}`, estimatedXp)}
     </article>
   `;
 }

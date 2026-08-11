@@ -356,6 +356,25 @@ dd {
   text-decoration: line-through;
 }
 
+.task-card.locked {
+  opacity: 0.58;
+  filter: saturate(0.35);
+}
+
+.task-card.locked .task-check:disabled {
+  background: var(--panel);
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+.daily-movement {
+  margin-top: 1.35rem;
+}
+
+.daily-movement .planned-head {
+  margin-top: 0;
+}
+
 .task-card.done {
   border-color: color-mix(in srgb, var(--ok) 70%, var(--line));
 }

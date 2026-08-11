@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { exerciseLibrary, exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeRepeatableTask, completeTask, completeWorkout, completeMinimumWorkout, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, personalBestSeconds, refreshMicroTasks, repeatableXp, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
+import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeRepeatableTask, completeTask, completeWorkout, completeMinimumWorkout, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, personalBestSeconds, refreshMicroTasks, repeatableTasksFor, repeatableXp, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, unlockedQuickTier, undoLastAction } from "../src/state.js";
 
 const program = generateProgram(new Date().toISOString().slice(0, 10));
 const today = new Date().toISOString().slice(0, 10);
@@ -50,6 +50,8 @@ state = signOut(state);
 assert.equal(isSignedIn(state), false);
 state = signIn(state, "Anton");
 state = ensureMicroTasks(state);
+assert.equal(unlockedQuickTier(state), 1);
+assert.ok(repeatableTasksFor(state).some((task) => task.tier > unlockedQuickTier(state)));
 assert.equal(state.microTasks.length, 5);
 assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => task.tier === 1));

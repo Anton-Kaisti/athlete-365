@@ -202,7 +202,7 @@ export function completeRepeatableTask(state, taskId, seconds = 0) {
   const next = structuredClone(ensureMicroTasks(state));
   const task = microTaskPool.find((item) => item.id === taskId && taskIsAvailable(item, next));
   const xp = repeatableXp(task, seconds);
-  if (!task || !xp) return next;
+  if (!task || task.tier > unlockedTier(next) || !xp) return next;
   const completedAt = new Date().toISOString();
   const entry = { ...task, completedAt, xp, source: "repeatable", seconds: task.stopwatch ? Number(seconds) : undefined };
   next.repeatableTaskHistory = Array.isArray(next.repeatableTaskHistory) ? next.repeatableTaskHistory : [];
@@ -217,6 +217,10 @@ export function completeRepeatableTask(state, taskId, seconds = 0) {
 export function repeatableTasksFor(state) {
   const next = ensureMicroTasks(state);
   return microTaskPool.filter((task) => taskIsAvailable(task, next));
+}
+
+export function unlockedQuickTier(state) {
+  return unlockedTier(state);
 }
 
 export function personalBestSeconds(state, label) {
