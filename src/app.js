@@ -2,7 +2,9 @@ import { exerciseLibrary, exercisesAlphabetically, levelFromXp, xpForLevel, vali
 import {
   DAILY_TASK_MILESTONES,
   QUICK_SET_BONUS_XP,
+  REPEATABLE_XP_DIVISOR,
   completeMicroTask,
+  completeRepeatableTask,
   completeMinimumWorkout,
   completeTask,
   completeWorkout,
@@ -13,8 +15,11 @@ import {
   loadState,
   nextIncompleteWorkoutDay,
   programForState,
+  personalBestSeconds,
   readinessAdvice,
   refreshMicroTasks,
+  repeatableTasksFor,
+  repeatableXp,
   replaceMicroTask,
   resetState,
   saveState,
@@ -54,7 +59,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260807-25", { updateViaCache: "none" })
+    .register("./sw.js?v=20260811-26", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -76,6 +81,7 @@ function render() {
       </section>
       <nav aria-label="Primary navigation">
         ${navButton("tasks", "Tasks")}
+        ${navButton("quick-pool", "Quick pool")}
         ${navButton("dashboard", "Workout")}
         ${navButton("calendar", "Calendar")}
         ${navButton("program", "Program")}
@@ -95,12 +101,38 @@ function render() {
 function view() {
   if (!isSignedIn(state)) return loginView();
   if (route === "tasks") return tasksView();
+  if (route === "quick-pool") return quickPoolView();
   if (route === "calendar") return calendarView();
   if (route === "program") return programView();
   if (route === "progress") return progressView();
   if (route === "library") return libraryView();
   if (route === "settings") return settingsView();
   return dashboardView();
+}
+
+function quickPoolView() {
+  const tasks = repeatableTasksFor(state);
+  return `
+    <section class="hero-grid">
+      <article class="today-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Repeatable quick tasks</p>
+            <h2>Train whenever you feel like it</h2>
+            <p>These are the same quick movements, available any number of times. Each completion earns one third of its queue XP and does not affect quick-set bonuses, daily milestones, or streaks.</p>
+          </div>
+          <strong class="level-badge">${tasks.length} tasks</strong>
+        </div>
+        <div class="micro-task-list">
+          ${tasks.map((task) => repeatableTaskCard(task)).join("")}
+        </div>
+      </article>
+      <aside class="side-panel">
+        <article class="card"><h3>Wall Sit challenge</h3><p>Your personal best: <b>${formatTimer(personalBestSeconds(state, "Wall Sit"))}</b>. Wall-sit XP scales with every completed minute held.</p></article>
+        ${metricCards(stats(state, program))}
+      </aside>
+    </section>
+  `;
 }
 
 function loginView() {
@@ -204,7 +236,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260807-25</p>
+            <p>Build 20260811-26</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -227,6 +259,23 @@ function microTaskCard(task, index) {
       </div>
       ${taskCardAside(task, timerKey, `micro:${index}`)}
       ${task.completed ? "" : `<button type="button" class="task-swap" data-swap-micro="${index}">Swap</button>`}
+    </article>
+  `;
+}
+
+function repeatableTaskCard(task) {
+  const timerKey = `repeatable:${task.id}`;
+  const estimatedXp = task.stopwatch ? `${Math.round(task.xp / REPEATABLE_XP_DIVISOR)} XP/min` : `${repeatableXp(task)} XP`;
+  return `
+    <article class="task-card micro tier-${task.tier}">
+      <button type="button" class="task-check" data-repeatable-task="${task.id}" aria-label="Complete ${task.title}">+</button>
+      <div>
+        <p class="eyebrow">Tier ${task.tier} · repeatable</p>
+        <h3>${task.title}</h3>
+        <p>${task.detail}</p>
+        <small>${task.stopwatch ? "Hold for at least 1:00, then finish. Each complete minute earns another minute of XP." : "Complete it as often as you want."}</small>
+      </div>
+      ${taskCardAside(task, timerKey, `repeatable:${task.id}`, estimatedXp)}
     </article>
   `;
 }
@@ -260,9 +309,25 @@ function taskCard(task, day) {
   `;
 }
 
-function taskCardAside(task, timerKey, infoKey) {
+function taskCardAside(task, timerKey, infoKey, xpLabel = null) {
   const duration = timerSecondsForTask(task);
   const infoButton = `<button type="button" class="task-info-button" data-task-info="${infoKey}" aria-label="Information about ${task.title}">Info</button>`;
+  if (task.stopwatch) {
+    const timer = stopwatchSnapshot(timerKey);
+    return `
+      <div class="task-card-aside">
+        <strong>${xpLabel || `${task.xp} XP/min`}</strong>
+        <div class="task-timer" aria-label="Stopwatch for ${task.title}">
+          <output data-timer-display="${timerKey}">${formatTimer(timer.elapsed)}</output>
+          <small>PB ${formatTimer(personalBestSeconds(state, "Wall Sit"))}</small>
+          <div>
+            <button type="button" class="timer-toggle" data-stopwatch-toggle="${timerKey}">${timer.running ? "Pause" : timer.elapsed ? "Resume" : "Start"}</button>
+            <button type="button" class="timer-reset" data-stopwatch-reset="${timerKey}" aria-label="Reset stopwatch">Reset</button>
+          </div>
+        </div>
+        ${infoButton}
+      </div>`;
+  }
   if (!duration) return `<div class="task-card-aside"><strong>${task.xp} XP</strong>${infoButton}</div>`;
   const timer = timerSnapshot(timerKey, duration);
   return `
@@ -278,6 +343,13 @@ function taskCardAside(task, timerKey, infoKey) {
       ${infoButton}
     </div>
   `;
+}
+
+function stopwatchSnapshot(key) {
+  const timer = taskTimers.get(key) || { mode: "stopwatch", elapsed: 0, running: false, startedAt: null };
+  if (timer.running) timer.elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
+  taskTimers.set(key, timer);
+  return timer;
 }
 
 function timerSnapshot(key, duration) {
@@ -296,6 +368,16 @@ function formatTimer(seconds) {
 
 function updateTimerDisplays() {
   taskTimers.forEach((timer, key) => {
+    if (timer.mode === "stopwatch") {
+      if (timer.running) timer.elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
+      const output = app.querySelector(`[data-timer-display="${CSS.escape(key)}"]`);
+      if (output) {
+        output.textContent = formatTimer(timer.elapsed);
+        const button = output.parentElement.querySelector("[data-stopwatch-toggle]");
+        if (button) button.textContent = timer.running ? "Pause" : timer.elapsed ? "Resume" : "Start";
+      }
+      return;
+    }
     if (timer.running) {
       timer.remaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
       if (timer.remaining === 0) {
@@ -758,12 +840,32 @@ function bindEvents() {
     taskTimers.set(key, { duration: Number(button.dataset.timerDuration), remaining: Number(button.dataset.timerDuration), running: false, endAt: null, notified: false });
     updateTimerDisplays();
   }));
+  app.querySelectorAll("[data-stopwatch-toggle]").forEach((button) => button.addEventListener("click", () => {
+    const key = button.dataset.stopwatchToggle;
+    const timer = stopwatchSnapshot(key);
+    if (timer.running) {
+      timer.elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
+      timer.running = false;
+    } else {
+      timer.startedAt = Date.now() - timer.elapsed * 1000;
+      timer.running = true;
+      ensureTimerTicker();
+    }
+    taskTimers.set(key, timer);
+    updateTimerDisplays();
+  }));
+  app.querySelectorAll("[data-stopwatch-reset]").forEach((button) => button.addEventListener("click", () => {
+    taskTimers.set(button.dataset.stopwatchReset, { mode: "stopwatch", elapsed: 0, running: false, startedAt: null });
+    updateTimerDisplays();
+  }));
   app.querySelectorAll("[data-task-info]").forEach((card) => {
     card.addEventListener("click", () => {
       const [source, identifier] = card.dataset.taskInfo.split(":");
       const task = source === "micro"
         ? state.microTasks[Number(identifier)]
-        : dailyTasksFor(withSubstitutions(program[selectedDay - 1])).find((item) => item.id === identifier);
+        : source === "repeatable"
+          ? repeatableTasksFor(state).find((item) => item.id === identifier)
+          : dailyTasksFor(withSubstitutions(program[selectedDay - 1])).find((item) => item.id === identifier);
       if (task) showTaskInfo(task);
     });
   });
@@ -787,6 +889,23 @@ function bindEvents() {
     if (earnedSetBonus) showQuickSetCompletePopup(skillChanges);
     else if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
   }));
+  app.querySelectorAll("[data-repeatable-task]").forEach((button) => button.addEventListener("click", () => {
+    const task = repeatableTasksFor(state).find((item) => item.id === button.dataset.repeatableTask);
+    const seconds = task?.stopwatch ? stopwatchSnapshot(`repeatable:${task.id}`).elapsed : 0;
+    const xp = repeatableXp(task, seconds);
+    if (!xp) {
+      button.closest(".task-card")?.querySelector("output")?.classList.add("needs-minute");
+      return;
+    }
+    const beforeSkillLevels = skillLevelsFor(state);
+    celebrateTask(button, xp);
+    state = completeRepeatableTask(state, task.id, seconds);
+    const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
+    taskTimers.set(`repeatable:${task.id}`, { mode: "stopwatch", elapsed: 0, running: false, startedAt: null });
+    saveState(state);
+    render();
+    if (skillChanges.length) celebrateLevelUp(stats(state, program).totalLevel, skillChanges);
+  }));
   app.querySelectorAll("[data-swap-micro]").forEach((button) => button.addEventListener("click", () => {
     state = replaceMicroTask(state, Number(button.dataset.swapMicro));
     saveState(state);
@@ -807,8 +926,15 @@ function bindEvents() {
     const task = dailyTasksFor(day).find((item) => item.id === button.dataset.task);
     const wasDone = state.taskCompletions[taskKey(day.dayNumber, button.dataset.task)];
     const beforeSkillLevels = skillLevelsFor(state);
-    if (!wasDone) celebrateTask(button, task?.xp || 0);
-    state = completeTask(state, day, button.dataset.task);
+    const seconds = task?.stopwatch ? stopwatchSnapshot(`planned:${day.dayNumber}:${task.id}`).elapsed : 0;
+    const xp = task?.stopwatch ? Math.floor(seconds / 60) * task.xp : task?.xp || 0;
+    if (task?.stopwatch && !wasDone && !xp) {
+      button.closest(".task-card")?.querySelector("output")?.classList.add("needs-minute");
+      return;
+    }
+    if (!wasDone) celebrateTask(button, xp);
+    state = completeTask(state, day, button.dataset.task, seconds);
+    if (task?.stopwatch && !wasDone) taskTimers.set(`planned:${day.dayNumber}:${task.id}`, { mode: "stopwatch", elapsed: 0, running: false, startedAt: null });
     if (!wasDone && state.workouts[String(day.dayNumber)]?.completed) selectedDay = advanceProgramDay(day.dayNumber);
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     saveState(state);

@@ -3,6 +3,7 @@ import { SKILLS, generateProgram, skillsForExercise, xpForExercise, levelFromXp,
 const KEY = "athlete365-state-v1";
 export const QUICK_TASK_COUNT = 5;
 export const QUICK_SET_BONUS_XP = 100;
+export const REPEATABLE_XP_DIVISOR = 3;
 export const DAILY_TASK_MILESTONES = { 10: 100, 20: 250, 30: 450, 50: 900 };
 
 export function initialState() {
@@ -24,6 +25,7 @@ export function initialState() {
     xp: Object.fromEntries(SKILLS.map((skill) => [skill, 0])),
     microTasks: [],
     microTaskHistory: [],
+    repeatableTaskHistory: [],
     quickSetId: 1,
     quickTaskDate: startDate,
     quickSetBonus: null,
@@ -190,6 +192,37 @@ export function completeMicroTask(state, slotIndex) {
   return next;
 }
 
+export function repeatableXp(task, seconds = 0) {
+  const minutes = task?.stopwatch ? Math.floor(Number(seconds) / 60) : 1;
+  if (task?.stopwatch && minutes < 1) return 0;
+  return Math.max(1, Math.round((task?.xp || 0) * minutes / REPEATABLE_XP_DIVISOR));
+}
+
+export function completeRepeatableTask(state, taskId, seconds = 0) {
+  const next = structuredClone(ensureMicroTasks(state));
+  const task = microTaskPool.find((item) => item.id === taskId && taskIsAvailable(item, next));
+  const xp = repeatableXp(task, seconds);
+  if (!task || !xp) return next;
+  const completedAt = new Date().toISOString();
+  const entry = { ...task, completedAt, xp, source: "repeatable", seconds: task.stopwatch ? Number(seconds) : undefined };
+  next.repeatableTaskHistory = Array.isArray(next.repeatableTaskHistory) ? next.repeatableTaskHistory : [];
+  next.repeatableTaskHistory.unshift(entry);
+  next.repeatableTaskHistory = next.repeatableTaskHistory.slice(0, 500);
+  awardXp(next, task.skills, xp);
+  if (task.stopwatch) updatePersonalBest(next, "Wall Sit", Number(seconds));
+  next.achievements = achievementsFor(next, programForState(next));
+  return next;
+}
+
+export function repeatableTasksFor(state) {
+  const next = ensureMicroTasks(state);
+  return microTaskPool.filter((task) => taskIsAvailable(task, next));
+}
+
+export function personalBestSeconds(state, label) {
+  return Number((state.records || []).find((record) => record.label === label)?.value || 0);
+}
+
 export function refreshMicroTasks(state) {
   const next = structuredClone(ensureMicroTasks(state));
   next.quickSetId += 1;
@@ -344,6 +377,15 @@ export function dailyTasksFor(day) {
     });
   }
   tasks.push({
+    id: "daily-wall-sit",
+    title: "Daily Wall Sit",
+    detail: "Start the stopwatch, hold for at least 60 seconds, then finish to earn full XP for every complete minute.",
+    xp: 34,
+    skills: ["legs", "strength"],
+    movements: ["Wall Sit"],
+    stopwatch: true
+  });
+  tasks.push({
     id: "cooldown",
     title: "Cooldown and breathing",
     detail: day.cooldown.slice(0, 2).join(" + "),
@@ -358,7 +400,7 @@ export function dailyTasksFor(day) {
     skills: day.type === "recovery" ? ["recovery", "mobility"] : ["strength", "athleticism"],
     featured: true
   });
-  return tasks.slice(0, 9);
+  return tasks.slice(0, 10);
 }
 
 export function timerSecondsForTask(task) {
@@ -369,7 +411,7 @@ export function timerSecondsForTask(task) {
   return minutes ? Number(minutes[1]) * 60 : null;
 }
 
-export function completeTask(state, day, taskId) {
+export function completeTask(state, day, taskId, seconds = 0) {
   const next = structuredClone(state);
   const key = taskKey(day.dayNumber, taskId);
   const tasks = dailyTasksFor(day);
@@ -384,14 +426,17 @@ export function completeTask(state, day, taskId) {
     next.achievements = achievementsFor(next, programForState(next));
     return next;
   }
+  const gained = task.stopwatch ? Math.max(0, Math.floor(Number(seconds) / 60)) * task.xp : task.xp;
+  if (!gained) return next;
   next.taskCompletions[key] = {
     completed: true,
     date: new Date().toISOString(),
-    xp: task.xp,
+    xp: gained,
     skills: task.skills,
     createdWorkout: false
   };
-  awardXp(next, task.skills, task.xp);
+  awardXp(next, task.skills, gained);
+  if (task.stopwatch) updatePersonalBest(next, "Wall Sit", Number(seconds));
   if (taskId === "full-workout" && !next.workouts[String(day.dayNumber)]?.completed) {
     next.taskCompletions[key].createdWorkout = true;
     next.workouts[String(day.dayNumber)] = {
@@ -403,7 +448,7 @@ export function completeTask(state, day, taskId) {
       jointPain: 0,
       bodyweight: "",
       notes: "Completed from task list.",
-      gained: task.xp
+      gained
     };
   }
   awardTaskStreakBonus(next, programForState(next), day.dayNumber);
@@ -531,7 +576,7 @@ function updatePersonalBest(state, label, value) {
 }
 
 function tierTask(tier, title, detail, xp, skills, equipment = [], movements = []) {
-  return { id: slug(title), tier, title, detail, xp, skills, equipment, movements, maxDurationSeconds: estimatedDurationSeconds(title, detail) };
+  return { id: slug(title), tier, title, detail, xp, skills, equipment, movements, stopwatch: movements.includes("Wall Sit"), maxDurationSeconds: estimatedDurationSeconds(title, detail) };
 }
 
 function estimatedDurationSeconds(title, detail) {

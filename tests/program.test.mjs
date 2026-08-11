@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { exerciseLibrary, exercisesAlphabetically, generateProgram, validateProgram, levelFromXp, xpForExercise } from "../src/program.js";
-import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeTask, completeWorkout, completeMinimumWorkout, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, refreshMicroTasks, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
+import { DAILY_TASK_MILESTONES, QUICK_SET_BONUS_XP, completeMicroTask, completeRepeatableTask, completeTask, completeWorkout, completeMinimumWorkout, dailyTasksFor, ensureMicroTasks, initialState, isSignedIn, microTaskPool, nextIncompleteWorkoutDay, personalBestSeconds, refreshMicroTasks, repeatableXp, signIn, signOut, stats, taskKey, taskProgress, timerSecondsForTask, undoLastAction } from "../src/state.js";
 
 const program = generateProgram(new Date().toISOString().slice(0, 10));
 const today = new Date().toISOString().slice(0, 10);
@@ -36,8 +36,9 @@ assert.equal(timerSecondsForTask({ title: "20-Second Plank", detail: "Hold it." 
 assert.equal(timerSecondsForTask({ title: "Mobility", detail: "Move for 5-10 minutes." }), 300);
 assert.equal(timerSecondsForTask({ title: "10 Push-Ups", detail: "Complete clean reps." }), null);
 assert.equal(timerSecondsForTask(tasks.find((task) => task.id === "full-workout")), program[0].duration * 60);
-assert.equal(tasks.length, 9);
+assert.equal(tasks.length, 10);
 assert.ok(tasks.some((task) => task.id === "full-workout"));
+assert.ok(tasks.find((task) => task.id === "daily-wall-sit").stopwatch);
 assert.ok(tasks.find((task) => task.id === "full-workout").xp > tasks.find((task) => task.id === "warmup").xp);
 
 let state = initialState();
@@ -97,6 +98,15 @@ assert.ok(stats(state, program).completedTaskCount >= 1);
 state = completeTask(state, program[0], "warmup");
 assert.equal(state.taskCompletions[taskKey(1, "warmup")], undefined);
 assert.equal(stats(state, program).completedTaskCount, 0);
+
+const wallSit = tasks.find((task) => task.id === "daily-wall-sit");
+assert.equal(repeatableXp(microTaskPool.find((task) => task.title === "60-Second Wall Sit"), 120), 23);
+state = completeTask(state, program[0], "daily-wall-sit", 120);
+assert.equal(state.taskCompletions[taskKey(1, "daily-wall-sit")].xp, wallSit.xp * 2);
+assert.equal(personalBestSeconds(state, "Wall Sit"), 120);
+state.profile.quickDuration = 120;
+state = completeRepeatableTask(state, "60-second-wall-sit", 180);
+assert.equal(personalBestSeconds(state, "Wall Sit"), 180);
 
 for (const day of program.slice(0, 3)) {
   for (const task of dailyTasksFor(day)) {

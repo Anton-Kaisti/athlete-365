@@ -406,6 +406,15 @@ dd {
   color: var(--ok);
 }
 
+.task-timer output.needs-minute {
+  color: var(--brand-2);
+  animation: timer-attention 0.55s ease-in-out 2;
+}
+
+@keyframes timer-attention {
+  50% { transform: scale(1.08); }
+}
+
 .task-timer > div {
   display: flex;
   gap: 0.3rem;
