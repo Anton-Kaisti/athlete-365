@@ -60,7 +60,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   navigator.serviceWorker
-    .register("./sw.js?v=20260811-27", { updateViaCache: "none" })
+    .register("./sw.js?v=20260811-28", { updateViaCache: "none" })
     .then((registration) => {
       serviceWorkerRegistration = registration;
       return registration.update();
@@ -250,7 +250,7 @@ function tasksView() {
         <article class="card app-version-card">
           <div>
             <h3>App version</h3>
-            <p>Build 20260811-27</p>
+            <p>Build 20260811-28</p>
           </div>
           <button type="button" data-update-app>Get latest version</button>
         </article>
@@ -891,11 +891,13 @@ function bindEvents() {
     render();
   }));
   app.querySelectorAll("[data-micro-task]").forEach((button) => button.addEventListener("click", () => {
-    const task = state.microTasks[Number(button.dataset.microTask)];
+    const slotIndex = Number(button.dataset.microTask);
+    const task = state.microTasks[slotIndex];
+    const seconds = task?.stopwatch ? stopwatchSnapshot(`micro:${task.id}`).elapsed : 0;
     const alreadyEarnedSetBonus = state.quickSetBonus?.quickSetId === state.quickSetId;
     const beforeSkillLevels = skillLevelsFor(state);
     celebrateTask(button, task?.xp || 0);
-    state = completeMicroTask(state, Number(button.dataset.microTask));
+    state = completeMicroTask(state, slotIndex, seconds);
     const skillChanges = skillLevelChanges(beforeSkillLevels, skillLevelsFor(state));
     const earnedSetBonus = !alreadyEarnedSetBonus && state.quickSetBonus?.quickSetId === state.quickSetId;
     if (earnedSetBonus) state = refreshMicroTasks(state);

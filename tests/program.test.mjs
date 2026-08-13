@@ -103,9 +103,13 @@ assert.equal(stats(state, program).completedTaskCount, 0);
 
 const wallSit = tasks.find((task) => task.id === "daily-wall-sit");
 assert.equal(repeatableXp(microTaskPool.find((task) => task.title === "60-Second Wall Sit"), 120), 23);
+state.profile.quickDuration = 120;
+state.microTasks[0] = { ...microTaskPool.find((task) => task.stopwatch), completed: false, completedAt: null };
+state = completeMicroTask(state, 0, 180);
+assert.equal(personalBestSeconds(state, "Wall Sit"), 180);
 state = completeTask(state, program[0], "daily-wall-sit", 120);
 assert.equal(state.taskCompletions[taskKey(1, "daily-wall-sit")].xp, wallSit.xp * 2);
-assert.equal(personalBestSeconds(state, "Wall Sit"), 120);
+assert.equal(personalBestSeconds(state, "Wall Sit"), 180);
 state.profile.quickDuration = 120;
 state = completeRepeatableTask(state, "60-second-wall-sit", 180);
 assert.equal(personalBestSeconds(state, "Wall Sit"), 180);

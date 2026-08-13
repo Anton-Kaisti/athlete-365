@@ -156,7 +156,7 @@ export function ensureMicroTasks(state) {
   return next;
 }
 
-export function completeMicroTask(state, slotIndex) {
+export function completeMicroTask(state, slotIndex, seconds = 0) {
   const next = structuredClone(ensureMicroTasks(state));
   const task = next.microTasks[slotIndex];
   if (!task || task.completed) return next;
@@ -165,12 +165,14 @@ export function completeMicroTask(state, slotIndex) {
     ...task,
     completed: true,
     completedAt,
-    quickSetId: next.quickSetId
+    quickSetId: next.quickSetId,
+    seconds: task.stopwatch ? Number(seconds) : undefined
   };
   next.microTaskHistory.unshift(historyEntry);
   next.microTaskHistory = next.microTaskHistory.slice(0, 250);
   awardXp(next, task.skills, task.xp);
   next.microTasks[slotIndex] = { ...task, completed: true, completedAt };
+  if (task.stopwatch) updatePersonalBest(next, "Wall Sit", Number(seconds));
   next.lastUndo = {
     type: "micro",
     slotIndex,
