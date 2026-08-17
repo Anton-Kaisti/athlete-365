@@ -27,7 +27,7 @@ const alphabeticalExercises = exercisesAlphabetically().map((exercise) => exerci
 assert.deepEqual(alphabeticalExercises, [...alphabeticalExercises].sort((a, b) => a.localeCompare(b)));
 assert.ok(microTaskPool.every((task) => task.movements.length > 0));
 assert.ok(microTaskPool.every((task) => task.maxDurationSeconds <= 120));
-assert.ok(microTaskPool.every((task) => task.equipment.every((item) => item === "pull-up bar")));
+assert.ok(microTaskPool.every((task) => task.equipment.every((item) => ["pull-up bar", "rings", "resistance bands"].includes(item))));
 assert.ok(microTaskPool.every((task) => task.movements.every((name) => exerciseLibrary[name])));
 assert.ok(microTaskPool.every((task) => task.movements.every((name) => exerciseLibrary[name].setup && exerciseLibrary[name].steps.length >= 2)));
 
@@ -55,7 +55,8 @@ assert.ok(repeatableTasksFor(state).some((task) => task.tier > unlockedQuickTier
 assert.equal(state.microTasks.length, 5);
 assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => task.tier === 1));
-assert.ok(state.microTasks.every((task) => task.equipment.length === 0 || task.equipment.every((item) => item === "pull-up bar")));
+assert.ok(state.microTasks.every((task) => task.equipment.every((item) => state.profile.equipment.includes(item))));
+assert.ok(microTaskPool.some((task) => task.tier === 1 && task.skills.includes("pull")));
 const firstQuickTask = state.microTasks[0].id;
 state = completeMicroTask(state, 0);
 assert.equal(state.microTaskHistory.length, 1);
@@ -75,13 +76,13 @@ state = refreshMicroTasks(state);
 assert.equal(state.microTasks.length, 5);
 assert.equal(new Set(state.microTasks.map((task) => task.id)).size, 5);
 assert.ok(state.microTasks.every((task) => !task.completed));
-assert.ok(state.microTasks.every((task) => task.equipment.length === 0 || task.equipment.every((item) => item === "pull-up bar")));
+assert.ok(state.microTasks.every((task) => task.equipment.every((item) => state.profile.equipment.includes(item))));
 assert.equal(state.quickSetBonus, null);
 assert.ok(state.microTasks.some((task) => !completedSetIds.includes(task.id)));
 state.xp.strength = 100000;
 state.microTasks = [microTaskPool.find((task) => task.equipment.includes("pull-up bar"))];
 state = ensureMicroTasks(state);
-assert.ok(state.microTasks.every((task) => task.equipment.length === 0 || task.equipment.every((item) => item === "pull-up bar")));
+assert.ok(state.microTasks.every((task) => task.equipment.every((item) => state.profile.equipment.includes(item))));
 state.profile.quickDuration = 30;
 state = refreshMicroTasks(state);
 assert.ok(state.microTasks.every((task) => task.maxDurationSeconds <= 30));

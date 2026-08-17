@@ -99,6 +99,26 @@ export const microTaskPool = [
   tierTask(1, "20 Arm Circles", "Use 10 controlled circles in each direction.", 10, ["mobility", "recovery"], [], ["Arm Circle"]),
   tierTask(1, "30-Second Posture Reset", "Stand tall, gently brace, and open the chest for 30 seconds.", 10, ["mobility", "recovery"], [], ["Wall Slide"]),
   tierTask(1, "10 Incline Push-Ups", "Use a stable chair or counter and keep a straight body line.", 14, ["push", "strength"], [], ["Incline Push-Up"]),
+  tierTask(1, "20-Second Active Hang", "Hold a comfortable active shoulder position; keep feet supported if needed.", 14, ["pull", "strength"], ["pull-up bar"], ["Dead Hang"]),
+  tierTask(1, "8 Scapular Pull-Ups", "Keep straight elbows and move only the shoulder blades.", 16, ["pull", "strength"], ["pull-up bar"], ["Scapular Pull-Up"]),
+  tierTask(1, "10 Ring Rows", "Keep your body rigid and pull the rings toward your ribs.", 18, ["pull", "strength"], ["rings"], ["Ring Row"]),
+  tierTask(1, "12 Band Rows", "Pull a light band toward the ribs with a tall torso.", 16, ["pull", "strength"], ["resistance bands"], ["Band Row"]),
+  tierTask(1, "15 Band Pull-Aparts", "Open the band with the shoulder blades; avoid shrugging.", 14, ["pull", "mobility"], ["resistance bands"], ["Band Pull-Apart"]),
+  tierTask(1, "8 Paused Incline Push-Ups", "Pause briefly near the support, then press with a straight body line.", 16, ["push", "strength"], [], ["Incline Push-Up"]),
+  tierTask(1, "10 Slow Squats", "Take three controlled seconds to lower, then stand tall.", 16, ["legs", "strength"], [], ["Squat"]),
+  tierTask(1, "12 Lateral-Ready Reverse Lunges", "Step back under control and keep the planted knee tracking over the toes.", 16, ["legs", "mobility"], [], ["Reverse Lunge"]),
+  tierTask(1, "10 Single-Leg RDLs per Side", "Hinge with control and keep the pelvis square.", 18, ["legs", "athleticism"], [], ["Single-Leg RDL"]),
+  tierTask(1, "20-Second Calf-Raise Hold", "Hold high on the balls of the feet with a wall nearby for balance.", 12, ["legs", "recovery"], [], ["Calf Raise"]),
+  tierTask(1, "20-Second Hollow Hold", "Keep your lower back pressed down and breathe behind the brace.", 14, ["core"], [], ["Hollow Hold"]),
+  tierTask(1, "10 Bear-Plank Steps", "Keep the knees low and take slow, quiet opposite-hand-and-foot steps.", 14, ["core", "athleticism"], [], ["Bear Crawl"]),
+  tierTask(1, "20-Second Dead-Bug Brace", "Keep the lower back quiet while slowly alternating limbs.", 12, ["core", "recovery"], [], ["Dead Bug"]),
+  tierTask(1, "30-Second Ankle Mobility Flow", "Use slow ankle rocks and controlled calf stretches.", 10, ["mobility", "recovery"], [], ["Mobility Flow"]),
+  tierTask(1, "30-Second Thoracic Rotation Flow", "Move gently through upper-back turns and shoulder reaches.", 10, ["mobility", "recovery"], [], ["Mobility Flow"]),
+  tierTask(2, "10 Band Face Pulls", "Pull the band toward the face with high elbows and ribs down.", 28, ["pull", "mobility"], ["resistance bands"], ["Band Face Pull"]),
+  tierTask(2, "6 Assisted Pull-Ups", "Use the band for support and stop before form changes.", 34, ["pull", "strength"], ["pull-up bar", "resistance bands"], ["Scapular Pull-Up"]),
+  tierTask(2, "20-Second Ring Support Hold", "Press tall through secure rings and keep the shoulders stable.", 28, ["push", "core"], ["rings"], ["Ring Row"]),
+  tierTask(2, "10 Slow Scapular Push-Ups", "Keep straight elbows and smoothly spread then squeeze the shoulder blades.", 24, ["push", "core"], [], ["Scapular Push-Up"]),
+  tierTask(2, "20-Second Side Plank Switch", "Hold each side with stacked ribs and hips tall.", 24, ["core", "recovery"], [], ["Side Plank"]),
   tierTask(2, "12 Push-Ups + 12 Squats", "Complete one clean, steady round in about a minute.", 45, ["push", "legs", "strength"], [], ["Push-Up", "Squat"]),
   tierTask(2, "30s Plank + 10 Sit-Ups", "Brace hard and keep reps controlled; finish within a minute.", 36, ["core"], [], ["Plank", "Sit-Up"]),
   tierTask(2, "20 Split Squats", "Complete 10 reps per side.", 34, ["legs", "strength"], [], ["Split Squat"]),
@@ -610,7 +630,7 @@ function drawMicroTask(state, salt) {
 function taskIsAvailable(task, state) {
   const profile = state.profile || {};
   if (task.maxDurationSeconds > Number(profile.quickDuration || 120)) return false;
-  if (!task.equipment.every((item) => item === "pull-up bar" && profile.equipment?.includes(item))) return false;
+  if (!task.equipment.every((item) => profile.equipment?.includes(item))) return false;
   const text = `${task.title} ${task.detail} ${task.movements.join(" ")}`.toLowerCase();
   if (profile.quietQuickTasks && /(jump|hop|plyo|mountain climber)/.test(text)) return false;
   const limitations = String(profile.limitations || "").toLowerCase();
